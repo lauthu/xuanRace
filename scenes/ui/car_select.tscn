@@ -1,0 +1,128 @@
+[gd_scene load_steps=5 format=3 uid="uid://xuanrace_car_select"]
+
+[ext_resource type="Script" path="res://scripts/ui/car_select.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/ui/menu_bg.png" id="2"]
+[ext_resource type="Script" path="res://scripts/ui/track_preview.gd" id="3"]
+
+[sub_resource type="Environment" id="preview_env"]
+background_mode = 1
+background_color = Color(0.03, 0.04, 0.02, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.75, 0.78, 0.85, 1)
+ambient_light_energy = 0.8
+
+[node name="CarSelect" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Background" type="TextureRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+modulate = Color(0.5, 0.5, 0.5, 1)
+expand_mode = 1
+stretch_mode = 6
+texture = ExtResource("2")
+
+[node name="Dim" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.01, 0.015, 0.01, 0.6)
+
+[node name="Center" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="Center"]
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Title" type="Label" parent="Center/VBox"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 40
+horizontal_alignment = 1
+text = "第 1 步：选择车型"
+
+[node name="HBox" type="HBoxContainer" parent="Center/VBox"]
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="PrevButton" type="Button" parent="Center/VBox/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 64)
+theme_override_font_sizes/font_size = 32
+text = "◀"
+
+[node name="PreviewContainer" type="SubViewportContainer" parent="Center/VBox/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(520, 320)
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Center/VBox/HBox/PreviewContainer"]
+own_world_3d = true
+size = Vector2i(520, 320)
+
+[node name="World" type="Node3D" parent="Center/VBox/HBox/PreviewContainer/SubViewport"]
+
+[node name="PreviewPivot" type="Node3D" parent="Center/VBox/HBox/PreviewContainer/SubViewport/World"]
+unique_name_in_owner = true
+
+[node name="PreviewCamera" type="Camera3D" parent="Center/VBox/HBox/PreviewContainer/SubViewport/World"]
+unique_name_in_owner = true
+position = Vector3(2.0, 1.2, -2.2)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Center/VBox/HBox/PreviewContainer/SubViewport/World"]
+rotation = Vector3(-0.7, 0.6, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Center/VBox/HBox/PreviewContainer/SubViewport/World"]
+environment = SubResource("preview_env")
+
+[node name="TrackPreview" type="Control" parent="Center/VBox/HBox"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(520, 320)
+mouse_filter = 2
+script = ExtResource("3")
+
+[node name="NextButton" type="Button" parent="Center/VBox/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 64)
+theme_override_font_sizes/font_size = 32
+text = "▶"
+
+[node name="ColorRow" type="HBoxContainer" parent="Center/VBox"]
+unique_name_in_owner = true
+visible = false
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="DestructibleToggle" type="CheckButton" parent="Center/VBox"]
+unique_name_in_owner = true
+visible = false
+theme_override_font_sizes/font_size = 18
+text = "允许破坏（可撞倒树木）"
+
+[node name="CarName" type="Label" parent="Center/VBox"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+text = "F1 赛车"
+
+[node name="ActionButton" type="Button" parent="Center/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 52)
+theme_override_font_sizes/font_size = 22
+text = "下一步：选择颜色"
+
+[node name="BackButton" type="Button" parent="Center/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 40)
+theme_override_font_sizes/font_size = 16
+text = "返回主菜单"

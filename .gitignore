@@ -1,0 +1,18 @@
+# Godot 4 缓存（导入产物，可由资源重新生成）
+.godot/
+.import/
+
+# 导出产物
+export.cfg
+export_credentials.cfg
+builds/
+*.pck
+*.zip
+
+# 系统文件
+.DS_Store
+
+# Mono（如未来启用 C#）
+.mono/
+data_*/
+mono_crash.*.json

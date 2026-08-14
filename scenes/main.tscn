@@ -1,0 +1,44 @@
+[gd_scene load_steps=10 format=3 uid="uid://xuanrace_main"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://xuanrace_track" path="res://scenes/track/track.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://xuanrace_car" path="res://scenes/car/car.tscn" id="3"]
+[ext_resource type="Script" path="res://scripts/track/lap_manager.gd" id="4"]
+[ext_resource type="PackedScene" uid="uid://xuanrace_hud" path="res://scenes/ui/hud.tscn" id="5"]
+[ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="6"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_material"]
+sky_top_color = Color(0.35, 0.55, 0.85, 1)
+sky_horizon_color = Color(0.7, 0.8, 0.9, 1)
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_material")
+
+[sub_resource type="Environment" id="environment"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+ambient_light_energy = 0.8
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.9, 0.5, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("environment")
+
+[node name="Track" parent="." instance=ExtResource("2")]
+
+[node name="Car" parent="." instance=ExtResource("3")]
+
+[node name="ChaseCamera" type="Camera3D" parent="."]
+script = ExtResource("6")
+
+[node name="LapManager" type="Node" parent="."]
+script = ExtResource("4")
+total_laps = 3
+
+[node name="HUD" parent="." instance=ExtResource("5")]

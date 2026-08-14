@@ -1,0 +1,58 @@
+[gd_scene load_steps=3 format=3 uid="uid://xuanrace_car"]
+
+[ext_resource type="Script" path="res://scripts/car/car_controller.gd" id="1"]
+
+[sub_resource type="BoxShape3D" id="body_shape"]
+size = Vector3(2.47, 1.0, 4.5)
+
+[node name="Car" type="VehicleBody3D"]
+mass = 600.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.17, 0)
+script = ExtResource("1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.75, 0)
+shape = SubResource("body_shape")
+
+[node name="Model" type="Node3D" parent="."]
+
+[node name="WheelFL" type="VehicleWheel3D" parent="."]
+position = Vector3(-1.23, 0.51, 1.6)
+use_as_traction = false
+use_as_steering = true
+wheel_radius = 0.51
+wheel_friction_slip = 6.0
+wheel_rest_length = 0.55
+suspension_travel = 0.2
+suspension_stiffness = 40.0
+
+[node name="WheelFR" type="VehicleWheel3D" parent="."]
+position = Vector3(1.23, 0.51, 1.6)
+use_as_traction = false
+use_as_steering = true
+wheel_radius = 0.51
+wheel_friction_slip = 6.0
+wheel_rest_length = 0.55
+suspension_travel = 0.2
+suspension_stiffness = 40.0
+
+[node name="WheelRL" type="VehicleWheel3D" parent="."]
+position = Vector3(-1.23, 0.51, -1.6)
+use_as_traction = true
+use_as_steering = false
+wheel_radius = 0.51
+wheel_friction_slip = 6.0
+wheel_rest_length = 0.55
+suspension_travel = 0.2
+suspension_stiffness = 40.0
+
+[node name="WheelRR" type="VehicleWheel3D" parent="."]
+position = Vector3(1.23, 0.51, -1.6)
+use_as_traction = true
+use_as_steering = false
+wheel_radius = 0.51
+wheel_friction_slip = 6.0
+wheel_rest_length = 0.55
+suspension_travel = 0.2
+suspension_stiffness = 40.0

@@ -1,0 +1,17 @@
+Sports Car
+作者: Quaternius (quaternius.com)
+来源: https://poly.pizza/m/Gzj704DXdr
+协议: Public Domain (CC0) — 公有领域，可自由用于任何用途，无需署名。
+特点: 前后轮独立节点（FrontWheel_L/R、BackWheels），支持车轮滚动/转向动画。
+
+Camaro ZL1 2017
+作者: Kris Tong | 来源: https://poly.pizza/m/7bF7UVAoYRG
+协议: Creative Commons Attribution 3.0 (CC-BY 3.0) — 需署名
+注: 单网格模型，车轮与车身一体，无车轮动画。
+
+Dodge Charger
+作者: David Sirera | 来源: https://poly.pizza/m/4b80hRVxqvv
+协议: Creative Commons Attribution 3.0 (CC-BY 3.0) — 需署名
+
+（已移除）Mazda RX-7：模型车身被拆成多个网格、白色车漆材质语义不明（换色失效），
+且内嵌 VehicleWheel3D 物理节点与本车物理冲突，暂不使用。

@@ -1,0 +1,9 @@
+Racing Kit / Car Kit
+Created/distributed by Kenney (www.kenney.nl)
+License: Creative Commons Zero (CC0) — public domain, 可自由用于任何用途，无需署名。
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Sources:
+- https://kenney.nl/assets/racing-kit (F1 赛车、赛道装饰)
+- https://kenney.nl/assets/car-kit (拉力赛车、吉普车、未来赛车)
+Mirrors: github.com/JiayuanZhu/SpeedRun, github.com/Arslan12216775/kenney_car-kit
