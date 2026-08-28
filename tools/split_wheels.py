@@ -139,7 +139,10 @@ def main(src, dst):
                 n[:, 2] = -n[:, 2]
             sel = sel[:, ::-1]
         if pivot is not None:
-            p -= np.array(pivot, dtype=np.float32)
+            # 轴心 = 部件 AABB 几何中心（比 K-means 质心/外环均值更准，
+            # 碎屑对包围盒两端对称抵消，偏差 <1cm）
+            pivot = (p.min(axis=0) + p.max(axis=0)) / 2.0
+            p -= pivot.astype(np.float32)
         attrs = {"POSITION": add_acc(p, 'VEC3', 5126)}
         if n is not None:
             attrs["NORMAL"] = add_acc(n, 'VEC3', 5126)
