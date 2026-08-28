@@ -16,3 +16,7 @@ builds/
 .mono/
 data_*/
 mono_crash.*.json
+
+# 本地密钥（勿提交）
+.env
+*.key

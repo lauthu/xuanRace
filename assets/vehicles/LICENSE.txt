@@ -20,3 +20,7 @@ Camaro ZL1 Pro (camaro_pro.glb)
 来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
 生成方式: 文本生成参考图 → Smart Mesh 图生 3D
 注: 带 4K 贴图的单网格模型，车轮与车身一体无动画，不参与游戏内换色。
+
+Dodge Charger Pro (charger_pro_split.glb)
+来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
+生成方式: 文生图（Nano Banana）→ Smart Mesh 图生 3D → tools/split_wheels.py 拆分四轮
