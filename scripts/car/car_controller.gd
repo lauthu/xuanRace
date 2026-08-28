@@ -56,6 +56,9 @@ func _ready() -> void:
 	elif model_cfg.get("recolor", true):
 		# 贴图模型（如 AI 生成）不换色，保留原生材质
 		CarRecolor.apply(model, paint)
+	# 玻璃补丁：AI 模型有些车窗融合在车壳里，按车身比例贴一块玻璃
+	for patch: Dictionary in model_cfg.get("glass_patches", []):
+		_add_glass_patch(model, patch)
 	_setup_wheels(model)
 
 
@@ -125,6 +128,46 @@ func _setup_wheels(model: Node3D) -> void:
 
 func _looks_like_wheel(mi: MeshInstance3D, body_volume: float) -> bool:
 	return CarRecolor.looks_like_wheel(mi, body_volume)
+
+
+## 玻璃补丁：在车身指定面的比例区域内贴一块蓝灰玻璃薄板。
+## x_range/y_range 为车身包围盒的比例区间（0~1），face 支持 rear/front
+## 坐标在车体系计算，补丁挂在未变换的 $Model 包装节点下
+func _add_glass_patch(model: Node3D, patch: Dictionary) -> void:
+	var body := CarRecolor._find_body_mesh(CarRecolor.collect_meshes(model))
+	if body == null:
+		return
+	# 此时车未摆位，global 即车体系
+	var model_aabb := CarRecolor.compute_aabb(model)  # 车体系（含缩放/旋转后）
+	var body_aabb := CarRecolor.compute_local_aabb(body)
+	var xr: Array = patch["x_range"]
+	var yr: Array = patch["y_range"]
+	var center := body.global_transform * Vector3(
+		body_aabb.position.x + body_aabb.size.x * (xr[0] + xr[1]) * 0.5,
+		body_aabb.position.y + body_aabb.size.y * (yr[0] + yr[1]) * 0.5,
+		0.0
+	)
+	var face: String = patch.get("face", "rear")
+	# 贴在车身壳体最外侧面外 1cm（用车壳包围盒，避免被备胎等外挂件顶出去）
+	var body_rear_z: float = (body.global_transform * Vector3(0, 0, body_aabb.position.z)).z
+	var body_front_z: float = (body.global_transform * Vector3(0, 0, body_aabb.position.z + body_aabb.size.z)).z
+	center.z = body_rear_z - 0.01 if face == "rear" else body_front_z + 0.01
+
+	var pane := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(
+		body_aabb.size.x * (xr[1] - xr[0]) * absf(model.scale.x),
+		body_aabb.size.y * (yr[1] - yr[0]) * absf(model.scale.y),
+		0.02
+	)
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = Color(0.18, 0.28, 0.38, 0.92)
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.roughness = 0.05
+	box.material = glass
+	pane.mesh = box
+	pane.position = center
+	$Model.add_child(pane)
 
 
 func _animate_wheels(delta: float, forward_speed: float) -> void:
