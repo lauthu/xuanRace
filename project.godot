@@ -30,9 +30,12 @@ BgmPlayer="*res://scripts/core/bgm_player.gd"
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/size/mode=2
+window/size/resizable=true
+window/dpi/allow_hidpi=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
 [rendering]
 
 anti_aliasing/quality/msaa_3d=2
+textures/default_filters/anisotropic_filtering_level=8
