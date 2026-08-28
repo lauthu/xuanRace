@@ -3,7 +3,7 @@ extends Node
 
 const CAR_MODELS := [
 	{ "name": "极速跑车", "path": "res://assets/vehicles/sports_car.glb", "yaw": 0.0 },
-	{ "name": "Camaro ZL1", "path": "res://assets/vehicles/camaro_pro.glb", "yaw": -1.5708, "recolor": false },
+	{ "name": "Camaro ZL1", "path": "res://assets/vehicles/camaro_pro_split.glb", "yaw": -1.5708, "recolor": false },
 	{ "name": "道奇 Charger", "path": "res://assets/vehicles/dodge_charger.glb", "yaw": 0.0 },
 	{ "name": "F1 赛车", "path": "res://assets/kenney_racing_kit/models/raceCarRed.glb", "yaw": 0.0 },
 	{ "name": "拉力赛车", "path": "res://assets/kenney_racing_kit/models/hatchback-sports.glb", "yaw": 0.0 },
