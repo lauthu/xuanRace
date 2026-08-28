@@ -29,3 +29,7 @@ Dodge Charger Pro (charger_pro_split.glb)
 来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
 生成方式: 文生图 → Smart Mesh + Generate in Parts 分件（28 个部件，无贴图纯色模型）
 注: 部件级分离（轮胎/轮毂独立），游戏内按部件角色配色并支持换色。
+
+Camaro ZL1 Parts (camaro_parts.glb) / Dodge Charger Parts (charger_parts.glb)
+来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
+生成方式: 文生图 → Smart Mesh + Generate in Parts 分件（无贴图纯色，支持游戏内换色）

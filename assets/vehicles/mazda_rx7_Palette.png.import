@@ -2,13 +2,10 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://kppdveu2rvc5"
+uid="uid://c17qe0345dk8i"
 path="res://.godot/imported/mazda_rx7_Palette.png-60dd2c8a160e44cfc1f11633515ca88c.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "507b00d35d0f3012a9e79196c4d862cf"
 }
 
 [deps]
@@ -26,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

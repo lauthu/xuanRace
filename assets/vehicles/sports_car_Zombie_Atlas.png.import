@@ -2,13 +2,10 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://8n7b31k7y8p3"
+uid="uid://buhmuxaxog3s1"
 path="res://.godot/imported/sports_car_Zombie_Atlas.png-5e52455f712359205d545c8c07a94a41.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "5b7c72c28e3ae7a7d279ebc2e407d44c"
 }
 
 [deps]
@@ -26,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
