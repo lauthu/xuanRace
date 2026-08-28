@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://rdpoy6iu13go"
-path="res://.godot/imported/charger_pro_split_classic+car+3d+model_rm.jpg-9cada589e305d9785b70053abe533959.ctex"
+path.s3tc="res://.godot/imported/charger_pro_split_classic+car+3d+model_rm.jpg-9cada589e305d9785b70053abe533959.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "1305fd87c1b28eeb5bc6b511cbc8cd78"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/vehicles/charger_pro_split_classic+car+3d+model_rm.jpg"
-dest_files=["res://.godot/imported/charger_pro_split_classic+car+3d+model_rm.jpg-9cada589e305d9785b70053abe533959.ctex"]
+dest_files=["res://.godot/imported/charger_pro_split_classic+car+3d+model_rm.jpg-9cada589e305d9785b70053abe533959.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

@@ -50,8 +50,11 @@ func _ready() -> void:
 	CarRecolor.autofit(model, FIT_LENGTH, model_cfg.get("yaw", 0.0))
 	model.position.y -= VISUAL_Y_OFFSET
 	$Model.add_child(model)
-	# 贴图模型（如 AI 生成）不换色，保留原生材质
-	if model_cfg.get("recolor", true):
+	if model_cfg.get("parts", false):
+		# 分件模型（Generate in Parts，无贴图）：按部件角色手工配色
+		_colorize_parts(model, paint)
+	elif model_cfg.get("recolor", true):
+		# 贴图模型（如 AI 生成）不换色，保留原生材质
 		CarRecolor.apply(model, paint)
 	_setup_wheels(model)
 
@@ -70,6 +73,38 @@ func _strip_embedded_vehicle_wheels(model: Node3D) -> void:
 			node.remove_child(child)
 			plain.add_child(child)
 		node.queue_free()
+
+
+## 分件模型配色：车身喷所选车漆，轮子深灰，其余部件深灰装饰
+func _colorize_parts(model: Node3D, paint: Color) -> void:
+	var meshes := CarRecolor.collect_meshes(model)
+	if meshes.is_empty():
+		return
+	var body := CarRecolor._find_body_mesh(meshes)
+	var body_volume := 1.0
+	if body != null and body.mesh != null:
+		var bs: Vector3 = body.get_aabb().size
+		body_volume = maxf(bs.x * bs.y * bs.z, 0.001)
+
+	var body_mat := StandardMaterial3D.new()
+	body_mat.albedo_color = paint
+	var tire_mat := StandardMaterial3D.new()
+	tire_mat.albedo_color = Color(0.12, 0.12, 0.13)
+	var trim_mat := StandardMaterial3D.new()
+	trim_mat.albedo_color = Color(0.3, 0.3, 0.32)
+
+	for mi in meshes:
+		if mi.mesh == null:
+			continue
+		var mat: StandardMaterial3D
+		if mi == body:
+			mat = body_mat
+		elif _looks_like_wheel(mi, body_volume):
+			mat = tire_mat
+		else:
+			mat = trim_mat
+		for s in mi.mesh.get_surface_count():
+			mi.set_surface_override_material(s, mat)
 
 
 ## 自动识别模型中的车轮节点，包一层轴心枢轴以便滚动/转向动画。
@@ -106,13 +141,16 @@ func _setup_wheels(model: Node3D) -> void:
 		wheel.get_parent().remove_child(wheel)
 		pivot.add_child(wheel)
 		wheel.global_transform = global
-		# 前后轮按在车体 Z 轴上的位置区分（车头为 +Z）
-		var local_z := to_local(center).z
+		# 前后轮按在车体 Z 轴上的位置区分（车头为 +Z）；高位部件（后视镜等）排除
+		var local_pos := to_local(center)
+		if local_pos.y > 0.7:
+			pivot.queue_free()
+			continue
 		# 半径换算到世界尺寸（局部 AABB 未含节点缩放）
 		var world_radius := wheel.global_transform.basis.get_scale().y * aabb.size.y * 0.5
 		_wheels.append({
 			"pivot": pivot,
-			"front": local_z > 0.0 if not "back" in wheel.name.to_lower() else false,
+			"front": local_pos.z > 0.0 if not "back" in wheel.name.to_lower() else false,
 			"radius": maxf(world_radius, 0.1),
 		})
 
