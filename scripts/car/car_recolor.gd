@@ -237,7 +237,8 @@ static func looks_like_wheel(mi: MeshInstance3D, body_volume: float) -> bool:
 
 
 ## 分件模型（Generate in Parts，无贴图）按部件角色配色：
-## 车身（最大件）= 车漆；轮子 = 深灰；车窗（高位扁平件）= 蓝灰玻璃；其余 = 深灰饰件
+## 车身（最大件 + 车顶平板）= 车漆；轮胎/备胎（圆形件）= 深灰；
+## 车窗（中高位扁平件）= 蓝灰玻璃；其余 = 深灰饰件
 static func colorize_parts(root: Node3D, paint: Color) -> void:
 	var meshes := collect_meshes(root)
 	if meshes.is_empty():
@@ -266,15 +267,23 @@ static func colorize_parts(root: Node3D, paint: Color) -> void:
 		var mat := trim_mat
 		if mi == body:
 			mat = body_mat
-		elif looks_like_wheel(mi, body_volume):
-			mat = tire_mat
 		else:
-			# 车窗候选：位于车身上半部、扁平薄板（玻璃件特征）
 			var a := compute_local_aabb(mi)
 			var s := a.size
-			var min_dim := minf(s.x, minf(s.y, s.z))
-			var max_dim := maxf(s.x, maxf(s.y, s.z))
-			if a.get_center().y > body_top * 0.45 and min_dim < max_dim * 0.15 and s.x * s.z > 0.002:
-				mat = glass_mat
+			var cy := a.get_center().y
+			var dims := [s.x, s.y, s.z]
+			dims.sort()
+			var min_dim: float = dims[0]
+			var mid_dim: float = dims[1]
+			var max_dim: float = dims[2]
+			var roundish := max_dim > 0.0 and mid_dim / max_dim > 0.7 and min_dim < mid_dim * 0.7
+			var flat := max_dim > 0.0 and min_dim < max_dim * 0.15
+			var roof := cy > body_top * 0.8 and min_dim == s.y
+			if roof:
+				mat = body_mat  # 车顶跟车身同色
+			elif flat and cy > body_top * 0.4 and cy < body_top * 0.88 and mid_dim * max_dim > 0.004:
+				mat = glass_mat  # 车窗（先判扁平，避免方形后窗被误判为圆形件）
+			elif looks_like_wheel(mi, body_volume) or roundish:
+				mat = tire_mat  # 轮胎/轮毂/备胎
 		for s in mi.mesh.get_surface_count():
 			mi.set_surface_override_material(s, mat)
