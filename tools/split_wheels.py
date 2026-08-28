@@ -124,17 +124,25 @@ def main(src, dst):
         out['accessors'].append(acc)
         return acc_i
 
-    def add_part(name, tri_sel, pivot=None):
-        sel = tris[tri_sel]
+    def add_part(name, tri_sel, pivot=None, mirror_z=False, pivot_src=None):
+        sel = tris[tri_sel].copy()
         used = np.unique(sel)
         remap = np.full(len(pos), -1, dtype=np.int64)
         remap[used] = np.arange(len(used))
         p = pos[used].copy()
+        n = nrm[used].copy() if nrm is not None else None
+        if mirror_z:
+            # 围绕 pivot_src 做 z 镜像：翻转朝向并反向环绕、法线 z 取反
+            src = np.array(pivot_src, dtype=np.float32)
+            p[:, 2] = 2.0 * src[2] - p[:, 2]
+            if n is not None:
+                n[:, 2] = -n[:, 2]
+            sel = sel[:, ::-1]
         if pivot is not None:
             p -= np.array(pivot, dtype=np.float32)
         attrs = {"POSITION": add_acc(p, 'VEC3', 5126)}
-        if nrm is not None:
-            attrs["NORMAL"] = add_acc(nrm[used], 'VEC3', 5126)
+        if n is not None:
+            attrs["NORMAL"] = add_acc(n, 'VEC3', 5126)
         if uv is not None:
             attrs["TEXCOORD_0"] = add_acc(uv[used], 'VEC2', 5126)
         new_idx = remap[sel].astype(np.uint32)
@@ -149,9 +157,23 @@ def main(src, dst):
         out['nodes'][0]['children'].append(len(out['nodes']))
         out['nodes'].append(node)
 
+    # z>0 侧轮用 z<0 侧镜像生成（源模型该侧轮毂为 AI 生成的乱几何）
+    def mirror_of(k_left: int) -> int:
+        best, best_d = -1, 1e9
+        for k in range(4):
+            if k == k_left: continue
+            d = abs(centers[k][0] - centers[k_left][0]) + abs(abs(centers[k][1]) - abs(centers[k_left][1]))
+            if d < best_d: best_d, best = d, k
+        return best
+
     for k, name in names.items():
         c3 = np.array([centers[k][0], axle_y[k], centers[k][1]], dtype=np.float64)
-        add_part(name, assign==k, pivot=c3)
+        if name.endswith('r'):
+            kr = mirror_of(k)
+            add_part(name, assign==kr, pivot=c3,
+                     mirror_z=True, pivot_src=np.array([centers[kr][0], axle_y[kr], centers[kr][1]]))
+        else:
+            add_part(name, assign==k, pivot=c3)
     add_part("body", assign<0)
 
     # 拷贝图片 bufferViews（原样复制图像二进制）
