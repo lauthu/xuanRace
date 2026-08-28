@@ -51,8 +51,8 @@ func _ready() -> void:
 	model.position.y -= VISUAL_Y_OFFSET
 	$Model.add_child(model)
 	if model_cfg.get("parts", false):
-		# 分件模型（Generate in Parts，无贴图）：按部件角色手工配色
-		_colorize_parts(model, paint)
+		# 分件模型（Generate in Parts，无贴图）：按部件角色配色
+		CarRecolor.colorize_parts(model, paint)
 	elif model_cfg.get("recolor", true):
 		# 贴图模型（如 AI 生成）不换色，保留原生材质
 		CarRecolor.apply(model, paint)
@@ -73,38 +73,6 @@ func _strip_embedded_vehicle_wheels(model: Node3D) -> void:
 			node.remove_child(child)
 			plain.add_child(child)
 		node.queue_free()
-
-
-## 分件模型配色：车身喷所选车漆，轮子深灰，其余部件深灰装饰
-func _colorize_parts(model: Node3D, paint: Color) -> void:
-	var meshes := CarRecolor.collect_meshes(model)
-	if meshes.is_empty():
-		return
-	var body := CarRecolor._find_body_mesh(meshes)
-	var body_volume := 1.0
-	if body != null and body.mesh != null:
-		var bs: Vector3 = body.get_aabb().size
-		body_volume = maxf(bs.x * bs.y * bs.z, 0.001)
-
-	var body_mat := StandardMaterial3D.new()
-	body_mat.albedo_color = paint
-	var tire_mat := StandardMaterial3D.new()
-	tire_mat.albedo_color = Color(0.12, 0.12, 0.13)
-	var trim_mat := StandardMaterial3D.new()
-	trim_mat.albedo_color = Color(0.3, 0.3, 0.32)
-
-	for mi in meshes:
-		if mi.mesh == null:
-			continue
-		var mat: StandardMaterial3D
-		if mi == body:
-			mat = body_mat
-		elif _looks_like_wheel(mi, body_volume):
-			mat = tire_mat
-		else:
-			mat = trim_mat
-		for s in mi.mesh.get_surface_count():
-			mi.set_surface_override_material(s, mat)
 
 
 ## 自动识别模型中的车轮节点，包一层轴心枢轴以便滚动/转向动画。
@@ -155,18 +123,8 @@ func _setup_wheels(model: Node3D) -> void:
 		})
 
 
-## 形状启发式：轮子 ≈ 远小于车身的圆饼形（Y≈Z 近圆，X 较薄）
 func _looks_like_wheel(mi: MeshInstance3D, body_volume: float) -> bool:
-	if mi.mesh == null:
-		return false
-	var s: Vector3 = mi.get_aabb().size
-	var volume := s.x * s.y * s.z
-	if volume > body_volume * 0.12 or volume <= 0.0:
-		return false
-	if s.y <= 0.0 or s.z <= 0.0:
-		return false
-	var roundness := absf(s.y - s.z) / maxf(s.y, s.z)
-	return roundness < 0.35 and s.x < maxf(s.y, s.z) * 0.8
+	return CarRecolor.looks_like_wheel(mi, body_volume)
 
 
 func _animate_wheels(delta: float, forward_speed: float) -> void:

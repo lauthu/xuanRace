@@ -220,3 +220,61 @@ static func _similar_hue(c: Color, ref: Color) -> bool:
 		return false
 	var diff := absf(c.h - ref.h)
 	return minf(diff, 1.0 - diff) < _HUE_TOLERANCE
+
+
+## 形状启发式：轮子 ≈ 远小于车身的圆饼形（Y≈Z 近圆，X 较薄）
+static func looks_like_wheel(mi: MeshInstance3D, body_volume: float) -> bool:
+	if mi.mesh == null:
+		return false
+	var s: Vector3 = mi.get_aabb().size
+	var volume := s.x * s.y * s.z
+	if volume > body_volume * 0.12 or volume <= 0.0:
+		return false
+	if s.y <= 0.0 or s.z <= 0.0:
+		return false
+	var roundness := absf(s.y - s.z) / maxf(s.y, s.z)
+	return roundness < 0.35 and s.x < maxf(s.y, s.z) * 0.8
+
+
+## 分件模型（Generate in Parts，无贴图）按部件角色配色：
+## 车身（最大件）= 车漆；轮子 = 深灰；车窗（高位扁平件）= 蓝灰玻璃；其余 = 深灰饰件
+static func colorize_parts(root: Node3D, paint: Color) -> void:
+	var meshes := collect_meshes(root)
+	if meshes.is_empty():
+		return
+	var body := _find_body_mesh(meshes)
+	var body_volume := 1.0
+	var body_top := 1.0
+	if body != null and body.mesh != null:
+		var bs: Vector3 = body.get_aabb().size
+		body_volume = maxf(bs.x * bs.y * bs.z, 0.001)
+		var ba := compute_local_aabb(body)
+		body_top = ba.position.y + ba.size.y
+
+	var body_mat := StandardMaterial3D.new()
+	body_mat.albedo_color = paint
+	var tire_mat := StandardMaterial3D.new()
+	tire_mat.albedo_color = Color(0.12, 0.12, 0.13)
+	var glass_mat := StandardMaterial3D.new()
+	glass_mat.albedo_color = Color(0.25, 0.35, 0.45)
+	var trim_mat := StandardMaterial3D.new()
+	trim_mat.albedo_color = Color(0.28, 0.28, 0.3)
+
+	for mi in meshes:
+		if mi.mesh == null:
+			continue
+		var mat := trim_mat
+		if mi == body:
+			mat = body_mat
+		elif looks_like_wheel(mi, body_volume):
+			mat = tire_mat
+		else:
+			# 车窗候选：位于车身上半部、扁平薄板（玻璃件特征）
+			var a := compute_local_aabb(mi)
+			var s := a.size
+			var min_dim := minf(s.x, minf(s.y, s.z))
+			var max_dim := maxf(s.x, maxf(s.y, s.z))
+			if a.get_center().y > body_top * 0.45 and min_dim < max_dim * 0.15 and s.x * s.z > 0.002:
+				mat = glass_mat
+		for s in mi.mesh.get_surface_count():
+			mi.set_surface_override_material(s, mat)
