@@ -134,7 +134,7 @@ def main(src, dst):
         if mirror_z:
             # 围绕 pivot_src 做 z 镜像：翻转朝向并反向环绕、法线 z 取反
             src = np.array(pivot_src, dtype=np.float32)
-            p[:, 2] = 2.0 * src[2] - p[:, 2]
+            p[:, 2] = -p[:, 2]
             if n is not None:
                 n[:, 2] = -n[:, 2]
             sel = sel[:, ::-1]
