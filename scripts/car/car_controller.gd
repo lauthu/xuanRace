@@ -131,7 +131,7 @@ func _looks_like_wheel(mi: MeshInstance3D, body_volume: float) -> bool:
 
 
 ## 玻璃补丁：在车身指定面的比例区域内贴一块蓝灰玻璃薄板。
-## x_range/y_range 为车身包围盒的比例区间（0~1），face 支持 rear/front
+## rear/front 面用 x_range；left/right 面用 z_range；y_range 通用。
 ## 坐标在车体系计算，补丁挂在未变换的 $Model 包装节点下
 func _add_glass_patch(model: Node3D, patch: Dictionary) -> void:
 	var body := CarRecolor._find_body_mesh(CarRecolor.collect_meshes(model))
@@ -140,25 +140,45 @@ func _add_glass_patch(model: Node3D, patch: Dictionary) -> void:
 	# 此时车未摆位，global 即车体系
 	var model_aabb := CarRecolor.compute_aabb(model)  # 车体系（含缩放/旋转后）
 	var body_aabb := CarRecolor.compute_local_aabb(body)
-	var xr: Array = patch["x_range"]
-	var yr: Array = patch["y_range"]
-	var center := body.global_transform * Vector3(
-		body_aabb.position.x + body_aabb.size.x * (xr[0] + xr[1]) * 0.5,
-		body_aabb.position.y + body_aabb.size.y * (yr[0] + yr[1]) * 0.5,
-		0.0
-	)
 	var face: String = patch.get("face", "rear")
-	# 贴在车身壳体最外侧面外 1cm（用车壳包围盒，避免被备胎等外挂件顶出去）
+	var yr: Array = patch["y_range"]
+	var is_side := face == "left" or face == "right"
+
+	# 水平方向的比例区间：前后用 x_range，侧面用 z_range
+	var hr: Array = patch.get("z_range" if is_side else "x_range", [0.2, 0.8])
+	var body_h_size: float = body_aabb.size.z if is_side else body_aabb.size.x
+	var body_h_pos: float = body_aabb.position.z if is_side else body_aabb.position.x
+	var h_center: float = body_h_pos + body_h_size * (hr[0] + hr[1]) * 0.5
+	var h_size: float = body_h_size * (hr[1] - hr[0])
+
+	var center := body.global_transform * Vector3(
+		body_aabb.position.x + body_aabb.size.x * 0.5,
+		body_aabb.position.y + body_aabb.size.y * (yr[0] + yr[1]) * 0.5,
+		body_aabb.position.z + body_aabb.size.z * 0.5
+	)
+	if is_side:
+		center.z = (body.global_transform * Vector3(0, 0, h_center)).z
+	else:
+		center.x = (body.global_transform * Vector3(h_center, 0, 0)).x
+
+	# 贴在车壳面外侧 1cm（用车壳包围盒，避免被备胎等外挂件顶出去）
+	var body_left_x: float = (body.global_transform * Vector3(body_aabb.position.x, 0, 0)).x
+	var body_right_x: float = (body.global_transform * Vector3(body_aabb.position.x + body_aabb.size.x, 0, 0)).x
 	var body_rear_z: float = (body.global_transform * Vector3(0, 0, body_aabb.position.z)).z
 	var body_front_z: float = (body.global_transform * Vector3(0, 0, body_aabb.position.z + body_aabb.size.z)).z
-	center.z = body_rear_z - 0.01 if face == "rear" else body_front_z + 0.01
+	match face:
+		"rear": center.z = body_rear_z - 0.01
+		"front": center.z = body_front_z + 0.01
+		"left": center.x = body_left_x - 0.01
+		"right": center.x = body_right_x + 0.01
 
 	var pane := MeshInstance3D.new()
 	var box := BoxMesh.new()
+	# 侧面窗带：宽沿 Z、厚度沿 X；前后窗反之
 	box.size = Vector3(
-		body_aabb.size.x * (xr[1] - xr[0]) * absf(model.scale.x),
+		0.02 if is_side else h_size * absf(model.scale.x),
 		body_aabb.size.y * (yr[1] - yr[0]) * absf(model.scale.y),
-		0.02
+		h_size * absf(model.scale.z) if is_side else 0.02
 	)
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = Color(0.18, 0.28, 0.38, 0.92)

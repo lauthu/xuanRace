@@ -21,9 +21,7 @@ func show_track(shape: TrackShapes.Shape, road_color: Color) -> void:
 
 
 func _draw() -> void:
-	# 底板
-	draw_rect(Rect2(Vector2.ZERO, size), UIStyle.PANEL_BG, true)
-	draw_rect(Rect2(Vector2.ZERO, size), Color(UIStyle.LIME, 0.5), false, 2.0)
+	# 全屏悬浮布局：不画底板，赛道图占窗口中央
 	if _wild:
 		_draw_wild()
 		return
@@ -32,8 +30,8 @@ func _draw() -> void:
 
 	var bounds := Minimap._compute_bounds(_points)
 	var s := minf(
-		(size.x - MARGIN * 2.0) / bounds.size.x,
-		(size.y - MARGIN * 2.0) / bounds.size.y
+		(size.x - size.x * 0.3) / bounds.size.x,
+		(size.y - size.y * 0.3) / bounds.size.y
 	)
 	var center_world := bounds.get_center()
 
@@ -52,10 +50,10 @@ func _draw() -> void:
 	draw_line(start - normal * 12.0, start + normal * 12.0, Color.WHITE, 3.0, true)
 
 
-## 野外区域预览：方形边界 + 蜿蜒河流
+## 野外区域预览：方形边界 + 蜿蜒河流（全屏悬浮布局，无底板）
 func _draw_wild() -> void:
 	var map_half := TrackShapes.WILD_HALF_SIZE
-	var s := minf(size.x, size.y) * 0.8 / (map_half * 2.0)
+	var s := minf(size.x, size.y) * 0.6 / (map_half * 2.0)
 	var center := size * 0.5
 	var half := map_half * s
 	# 草地

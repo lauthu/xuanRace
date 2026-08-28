@@ -33,6 +33,9 @@ func _ready() -> void:
 	UIStyle.style_primary(%ActionButton)
 	UIStyle.style_ghost(%BackButton)
 	_camera.look_at(Vector3(0.0, 0.25, 0.0), Vector3.UP)
+	# 预览视口跟随窗口大小，保证全屏时 3D 不模糊
+	_sync_preview_size()
+	get_viewport().size_changed.connect(_sync_preview_size)
 	_build_color_swatches()
 	_show_step(Step.MODEL)
 
@@ -117,6 +120,14 @@ func _refresh_preview() -> void:
 
 func _is_wild_selected() -> bool:
 	return _game_state.get_selected_track()["shape"] == TrackShapes.Shape.WILD
+
+
+## 预览视口分辨率跟随窗口（SubViewport 固定尺寸拉伸会糊）
+func _sync_preview_size() -> void:
+	var sv := get_node("PreviewContainer/SubViewport") as SubViewport
+	var window_size := Vector2i(get_viewport().get_visible_rect().size)
+	if window_size.x > 0:
+		sv.size = window_size
 
 
 func _update_label() -> void:
