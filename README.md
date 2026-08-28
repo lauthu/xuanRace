@@ -62,22 +62,22 @@ xuanRace/
 │   ├── ui/menu_bg.png          # 主菜单背景图
 │   └── audio/racing_bgm.wav    # 背景音乐（CC0，含许可说明）
 └── scripts/
-    ├── main.gd                 # 主场景逻辑：模块串联、车辆重置
-    ├── core/input_setup.gd     # Autoload：运行时注册输入映射
-    ├── core/game_state.gd      # Autoload：全局状态（车型/颜色/赛道/破坏开关）
-    ├── core/bgm_player.gd      # Autoload：背景音乐（跨场景连续播放）
-    ├── car/car_controller.gd   # 车辆物理：油门/刹车/倒车/转向
-    ├── track/
-    │   ├── track_builder.gd    # 程序化生成椭圆赛道、围墙、检查点、出生点
-    │   ├── checkpoint.gd       # 检查点（Area3D，检测车辆通过）
-    │   └── lap_manager.gd      # 计时与计圈：圈速、最快圈、完赛判定
-    └── ui/
-        ├── hud.gd              # HUD：速度/圈数/圈速显示
-        ├── minimap.gd          # HUD 左下角：赛道缩略图（实时车点位与朝向）
-        ├── speed_gauge.gd      # HUD 右下角：指针式速度表盘
-        ├── ui_style.gd         # 全局 UI 样式库（荧光绿×黑主题）
-        ├── car_select.gd       # 两步选车（车型 → 颜色）
-        └── main_menu.gd        # 主菜单逻辑
+	├── main.gd                 # 主场景逻辑：模块串联、车辆重置
+	├── core/input_setup.gd     # Autoload：运行时注册输入映射
+	├── core/game_state.gd      # Autoload：全局状态（车型/颜色/赛道/破坏开关）
+	├── core/bgm_player.gd      # Autoload：背景音乐（跨场景连续播放）
+	├── car/car_controller.gd   # 车辆物理：油门/刹车/倒车/转向
+	├── track/
+	│   ├── track_builder.gd    # 程序化生成椭圆赛道、围墙、检查点、出生点
+	│   ├── checkpoint.gd       # 检查点（Area3D，检测车辆通过）
+	│   └── lap_manager.gd      # 计时与计圈：圈速、最快圈、完赛判定
+	└── ui/
+		├── hud.gd              # HUD：速度/圈数/圈速显示
+		├── minimap.gd          # HUD 左下角：赛道缩略图（实时车点位与朝向）
+		├── speed_gauge.gd      # HUD 右下角：指针式速度表盘
+		├── ui_style.gd         # 全局 UI 样式库（荧光绿×黑主题）
+		├── car_select.gd       # 两步选车（车型 → 颜色）
+		└── main_menu.gd        # 主菜单逻辑
 ```
 
 ## 设计要点

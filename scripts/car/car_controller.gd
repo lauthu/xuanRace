@@ -46,11 +46,13 @@ func _ready() -> void:
 		_shape = game_state.get_selected_track()["shape"]
 	var model: Node3D = load(model_cfg["path"]).instantiate()
 	_strip_embedded_vehicle_wheels(model)
-	# 自动缩放到碰撞体尺寸并居中（车长对齐 3 米）
+	# 自动缩放到碰撞体尺寸并居中（车长对齐 FIT_LENGTH）
 	CarRecolor.autofit(model, FIT_LENGTH, model_cfg.get("yaw", 0.0))
 	model.position.y -= VISUAL_Y_OFFSET
 	$Model.add_child(model)
-	CarRecolor.apply(model, paint)
+	# 贴图模型（如 AI 生成）不换色，保留原生材质
+	if model_cfg.get("recolor", true):
+		CarRecolor.apply(model, paint)
 	_setup_wheels(model)
 
 

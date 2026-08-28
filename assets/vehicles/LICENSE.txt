@@ -15,3 +15,8 @@ Dodge Charger
 
 （已移除）Mazda RX-7：模型车身被拆成多个网格、白色车漆材质语义不明（换色失效），
 且内嵌 VehicleWheel3D 物理节点与本车物理冲突，暂不使用。
+
+Camaro ZL1 Pro (camaro_pro.glb)
+来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
+生成方式: 文本生成参考图 → Smart Mesh 图生 3D
+注: 带 4K 贴图的单网格模型，车轮与车身一体无动画，不参与游戏内换色。

@@ -107,7 +107,9 @@ func _refresh_preview() -> void:
 	CarRecolor.autofit(_current_model, 2.2, model_cfg.get("yaw", 0.0))
 	_current_model.position.y += 0.1
 	_pivot.add_child(_current_model)
-	CarRecolor.apply(_current_model, _game_state.get_selected_color()["color"])
+	# 贴图模型（如 AI 生成）不换色，保留原生材质
+	if model_cfg.get("recolor", true):
+		CarRecolor.apply(_current_model, _game_state.get_selected_color()["color"])
 	_update_label()
 
 
