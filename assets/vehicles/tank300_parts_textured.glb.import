@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://b2flrevd02fgu"
-path="res://.godot/imported/tank300_parts.glb-81d8a2a209e99f95661fe9277e7e2e62.scn"
+uid="uid://58uq43n10imq"
+path="res://.godot/imported/tank300_parts_textured.glb-f705667ef8c1b1b23dd2d2bdb6cf4efb.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/tank300_parts.glb"
-dest_files=["res://.godot/imported/tank300_parts.glb-81d8a2a209e99f95661fe9277e7e2e62.scn"]
+source_file="res://assets/vehicles/tank300_parts_textured.glb"
+dest_files=["res://.godot/imported/tank300_parts_textured.glb-f705667ef8c1b1b23dd2d2bdb6cf4efb.scn"]
 
 [params]
 

@@ -5,12 +5,7 @@ const CAR_MODELS := [
 	{ "name": "极速跑车", "path": "res://assets/vehicles/sports_car.glb", "yaw": 0.0 },
 	{ "name": "Camaro ZL1", "path": "res://assets/vehicles/camaro_parts_textured.glb", "yaw": 0.0, "recolor": false },
 	{ "name": "道奇 Charger", "path": "res://assets/vehicles/charger_parts.glb", "yaw": 0.0, "recolor": false },
-	{ "name": "坦克300", "path": "res://assets/vehicles/tank300_parts.glb", "yaw": 0.0, "parts": true,
-		"glass_patches": [
-			{ "face": "rear", "x_range": [0.28, 0.70], "y_range": [0.62, 0.80] },
-			{ "face": "left", "z_range": [0.28, 0.72], "y_range": [0.55, 0.78] },
-			{ "face": "right", "z_range": [0.28, 0.72], "y_range": [0.55, 0.78] },
-		] },
+	{ "name": "坦克300", "path": "res://assets/vehicles/tank300_parts_textured.glb", "yaw": 0.0, "recolor": false },
 	{ "name": "F1 赛车", "path": "res://assets/kenney_racing_kit/models/raceCarRed.glb", "yaw": 0.0 },
 	{ "name": "拉力赛车", "path": "res://assets/kenney_racing_kit/models/hatchback-sports.glb", "yaw": 0.0 },
 	{ "name": "吉普越野车", "path": "res://assets/kenney_racing_kit/models/suv.glb", "yaw": 0.0 },
