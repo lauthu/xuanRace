@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://c2iw8u81sancy"
-path="res://.godot/imported/camaro_parts.glb-2c5ddb982eb23bdb4f2f5ed135ff6e0d.scn"
+uid="uid://cywn3kle85s5g"
+path="res://.godot/imported/camaro_parts_textured.glb-b64baace6ba5cf39819b917f54b7d8ae.scn"
 
 [deps]
 
-source_file="res://assets/vehicles/camaro_parts.glb"
-dest_files=["res://.godot/imported/camaro_parts.glb-2c5ddb982eb23bdb4f2f5ed135ff6e0d.scn"]
+source_file="res://assets/vehicles/camaro_parts_textured.glb"
+dest_files=["res://.godot/imported/camaro_parts_textured.glb-b64baace6ba5cf39819b917f54b7d8ae.scn"]
 
 [params]
 

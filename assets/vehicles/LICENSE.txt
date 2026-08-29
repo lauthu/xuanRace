@@ -32,4 +32,9 @@ Dodge Charger Pro (charger_pro_split.glb)
 
 Camaro ZL1 Parts (camaro_parts.glb) / Dodge Charger Parts (charger_parts.glb)
 来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
-生成方式: 文生图 → Smart Mesh + Generate in Parts 分件（无贴图纯色，支持游戏内换色）
+生成方式: 文生图 → HD Model + Generate in Parts 分件
+
+Camaro ZL1 Parts Textured (camaro_parts_textured.glb) / charger_parts.glb（已替换为贴图版）
+来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
+生成方式: 文生图 → HD Model + Generate in Parts 分件 → Texture 工作区 4K 二次贴图（分件保留）
+注: 带原生贴图，游戏内不参与换色（recolor: false）。
