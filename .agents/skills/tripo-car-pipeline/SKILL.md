@@ -89,6 +89,14 @@ python3 tools/split_wheels.py <in.glb> <out.glb>
 
 分件模型跳过这步。
 
+**检查前轮烘焙偏角**（AI 模型常见瑕疵）：部分模型的前轮网格自带 15~20° 转向角，正视图可见轮胎外八，行驶时像"弯轴"摆动。用 PCA 量化并矫正：
+
+```bash
+python3 tools/straighten_wheels.py <file.glb> <part_name> [part_name ...]
+```
+
+工具对每个部件的顶点做 PCA（最小特征值方向=轮轴），偏离 X 轴超 2° 则绕 AABB 中心反向旋正（超 45° 跳过防误判）。矫正后轮中心不变、法线同步旋转、贴图不受影响。后轮一般有 ±2° 内偏角属正常。
+
 ## 第 6 步：接入 game_state.gd
 
 在 `scripts/core/game_state.gd` 的 `CAR_MODELS` 加一条：
@@ -138,6 +146,8 @@ python3 tools/split_wheels.py <in.glb> <out.glb>
 |---|---|---|
 | 生成了单网格，没分件 | 开了 Texture，或误用 Smart Mesh P2.0（该模式无分件开关） | 用 HD Model、关 Texture 重新生成，贴图放到 Texture workspace 二次做 |
 | 车横着/屁股朝前开 | Tripo 各模型车头轴不一致 | 实测 yaw，别抄别的车 |
+| 前轮像外八、转动像弯轴 | 轮网格烘焙了转向角（AI 常见） | tools/straighten_wheels.py PCA 矫正 |
+| 座椅/内饰被误判成轮子转 | 启发式误判车内圆形件 | 已修：轮子须贴近车侧（>半宽 55%） |
 | 轮子绕偏心点转 | 枢轴用了顶点质心 | AABB 几何中心（split_wheels.py 已修） |
 | 分件上色全红/玻璃不对 | 分类规则顺序错 | body→roof→glass→roundish→trim；后窗并壳用 glass_patches |
 | 行驶中看不到轮子 | 追尾视角被车身挡住 | chase_camera 肩部偏移平滑跟随（已修） |
