@@ -90,12 +90,25 @@ func _setup_wheels(model: Node3D) -> void:
 		var bs: Vector3 = body.get_aabb().size
 		body_volume = maxf(bs.x * bs.y * bs.z, 0.001)
 
+	# 车身半宽（模型局部坐标）：真轮子必然贴近车侧，
+	# 用于排除座椅等车内圆形件被启发式误判为轮子
+	var body_half_w := 0.0
+	if body != null and body.mesh != null:
+		var ba := CarRecolor.compute_local_aabb(body)
+		var p0: Vector3 = model.to_local(body.global_transform * ba.position)
+		var p1: Vector3 = model.to_local(body.global_transform * (ba.position + Vector3(ba.size.x, 0, 0)))
+		body_half_w = absf(p1.x - p0.x) * 0.5
+
 	var wheel_nodes: Array[MeshInstance3D] = []
 	for mi in meshes:
 		var lower := mi.name.to_lower()
 		if "wheel" in lower or "tire" in lower:
 			wheel_nodes.append(mi)
 		elif _looks_like_wheel(mi, body_volume):
+			if body_half_w > 0.0:
+				var c: Vector3 = model.to_local(mi.global_transform * CarRecolor.compute_local_aabb(mi).get_center())
+				if absf(c.x) < body_half_w * 0.55:
+					continue
 			wheel_nodes.append(mi)
 	for wheel in wheel_nodes:
 		# 用网格在轮子局部坐标系下的包围盒中心作为轮轴心

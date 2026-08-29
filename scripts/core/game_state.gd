@@ -6,6 +6,7 @@ const CAR_MODELS := [
 	{ "name": "Camaro ZL1", "path": "res://assets/vehicles/camaro_parts_textured.glb", "yaw": 0.0, "recolor": false },
 	{ "name": "道奇 Charger", "path": "res://assets/vehicles/charger_parts.glb", "yaw": 0.0, "recolor": false },
 	{ "name": "坦克300", "path": "res://assets/vehicles/tank300_parts_textured.glb", "yaw": 0.0, "recolor": false },
+	{ "name": "斯巴鲁 GC8", "path": "res://assets/vehicles/subaru_gc8_parts.glb", "yaw": 0.0, "recolor": false },
 	{ "name": "F1 赛车", "path": "res://assets/kenney_racing_kit/models/raceCarRed.glb", "yaw": 0.0 },
 	{ "name": "拉力赛车", "path": "res://assets/kenney_racing_kit/models/hatchback-sports.glb", "yaw": 0.0 },
 	{ "name": "吉普越野车", "path": "res://assets/kenney_racing_kit/models/suv.glb", "yaw": 0.0 },
