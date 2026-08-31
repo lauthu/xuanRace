@@ -17,10 +17,18 @@ const ROAD_SEGMENTS := 128
 const CURB_WIDTH := 1.0 ## 路缘石宽度
 const DASH_WIDTH := 0.3 ## 中央虚线宽度
 const GROUND_SIZE := 400.0 ## 地面边长
+const WILD_GROUND_SIZE := 700.0 ## 野外区域地面边长（覆盖 320 半边长 + 余量）
 const HEIGHTMAP_RES := 401 ## 越野地形高度图分辨率（覆盖整个地面）
 const GROUND_GRID := 160 ## 越野地面网格细分
+const WILD_GROUND_GRID := 280 ## 野外地面网格细分（保持约 2.5 米/格）
 
-const TREE_MODEL := preload("res://assets/kenney_racing_kit/models/treeLarge.glb")
+## AI 生成的树种库（Tripo 管线：文生图 → HD Model 带贴图，见 assets/vehicles/LICENSE.txt）
+const TREE_MODELS: Array[PackedScene] = [
+	preload("res://assets/trees/pine.glb"),
+	preload("res://assets/trees/oak.glb"),
+	preload("res://assets/trees/birch.glb"),
+	preload("res://assets/trees/dead_tree.glb"),
+]
 const BANNER_RED := preload("res://assets/kenney_racing_kit/models/bannerTowerRed.glb")
 const BANNER_GREEN := preload("res://assets/kenney_racing_kit/models/bannerTowerGreen.glb")
 const FLAG_CHECKERS := preload("res://assets/kenney_racing_kit/models/flagCheckers.glb")
@@ -54,12 +62,14 @@ const SURFACE_PROFILES := {
 }
 
 const WILD_HALF_SIZE := TrackShapes.WILD_HALF_SIZE ## 野外区域半边长（米）
-const WILD_CLUSTER_COUNT := 7 ## 密林团数量
-const WILD_CLUSTER_TREES := 8 ## 每个密林团的树数（均值）
-const WILD_SPARSE_TREES := 12 ## 稀疏散树数量
+const WILD_CLUSTER_COUNT := 20 ## 密林团数量
+const WILD_CLUSTER_TREES := 12 ## 每个密林团的树数（均值）
+const WILD_SPARSE_TREES := 32 ## 稀疏散树数量
 
 var _shape := TrackShapes.Shape.ELLIPSE
 var _profile: Dictionary = SURFACE_PROFILES["asphalt"]
+var _ground_size := GROUND_SIZE ## 当前地面边长（野外区域更大）
+var _ground_grid := GROUND_GRID ## 当前地面网格细分
 
 
 func _ready() -> void:
@@ -153,14 +163,14 @@ func _build_ground() -> void:
 func _build_flat_ground(body: StaticBody3D) -> void:
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(GROUND_SIZE, 1.0, GROUND_SIZE)
+	box.size = Vector3(_ground_size, 1.0, _ground_size)
 	shape.shape = box
 	shape.position.y = -0.5
 	body.add_child(shape)
 
 	var mesh_instance := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(GROUND_SIZE, GROUND_SIZE)
+	plane.size = Vector2(_ground_size, _ground_size)
 	plane.material = _make_material(_profile["ground"])
 	mesh_instance.mesh = plane
 	body.add_child(mesh_instance)
@@ -174,32 +184,32 @@ func _build_bumpy_ground(body: StaticBody3D) -> void:
 	heightmap.map_depth = HEIGHTMAP_RES
 	var data := PackedFloat32Array()
 	data.resize(HEIGHTMAP_RES * HEIGHTMAP_RES)
-	var step := GROUND_SIZE / (HEIGHTMAP_RES - 1)
+	var step := _ground_size / (HEIGHTMAP_RES - 1)
 	for gz in HEIGHTMAP_RES:
 		for gx in HEIGHTMAP_RES:
-			var x := -GROUND_SIZE * 0.5 + gx * step
-			var z := -GROUND_SIZE * 0.5 + gz * step
+			var x := -_ground_size * 0.5 + gx * step
+			var z := -_ground_size * 0.5 + gz * step
 			data[gz * HEIGHTMAP_RES + gx] = TrackShapes.bump_height(_shape, x, z)
 	heightmap.map_data = data
 	shape.shape = heightmap
 	body.add_child(shape)
 
 	# 视觉：细分网格
-	var half := GROUND_SIZE * 0.5
-	var cell := GROUND_SIZE / GROUND_GRID
+	var half := _ground_size * 0.5
+	var cell := _ground_size / _ground_grid
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var indices := PackedInt32Array()
-	for gz in GROUND_GRID + 1:
-		for gx in GROUND_GRID + 1:
+	for gz in _ground_grid + 1:
+		for gx in _ground_grid + 1:
 			var x := -half + gx * cell
 			var z := -half + gz * cell
 			vertices.append(Vector3(x, TrackShapes.bump_height(_shape, x, z), z))
 			normals.append(_surface_normal(x, z))
-	for gz in GROUND_GRID:
-		for gx in GROUND_GRID:
-			var a := gz * (GROUND_GRID + 1) + gx
-			var b := a + GROUND_GRID + 1
+	for gz in _ground_grid:
+		for gx in _ground_grid:
+			var a := gz * (_ground_grid + 1) + gx
+			var b := a + _ground_grid + 1
 			# Godot 从法线方向看顺时针为正面（+offset 朝内侧，注意环绕方向）
 			indices.append_array([a, a + 1, b, a + 1, b + 1, b])
 
@@ -443,12 +453,16 @@ func _build_decorations() -> void:
 		# 超出地面范围则跳过
 		if absf(pos.x) > 190.0 or absf(pos.z) > 190.0:
 			continue
-		_place_model(TREE_MODEL, pos, rng.randf_range(3.0, 4.5), rng.randf_range(0.0, TAU))
+		_place_fitted_tree(pos, rng.randi_range(0, TREE_MODELS.size() - 1),
+			rng.randf_range(5.0, 8.0), rng.randf_range(0.0, TAU))
 
 
 # ---- 野外区域（开放地图，无赛道） ----
 
 func _build_wild() -> void:
+	# 野外区域使用更大的地面与更细的网格（面积约四倍）
+	_ground_size = WILD_GROUND_SIZE
+	_ground_grid = WILD_GROUND_GRID
 	var body := StaticBody3D.new()
 	body.name = "GroundBody"
 	add_child(body)
@@ -468,9 +482,9 @@ func _build_water() -> void:
 	var normals := PackedVector3Array()
 	var indices := PackedInt32Array()
 	var step := 4.0
-	var count := int(GROUND_SIZE / step)
+	var count := int(_ground_size / step)
 	for i in count + 1:
-		var x := -GROUND_SIZE * 0.5 + i * step
+		var x := -_ground_size * 0.5 + i * step
 		var zc := TrackShapes.river_center(x)
 		vertices.append(Vector3(x, TrackShapes.WATER_LEVEL, zc - half_width))
 		vertices.append(Vector3(x, TrackShapes.WATER_LEVEL, zc + half_width))
@@ -571,31 +585,54 @@ func _try_place_tree(pos: Vector2, rng: RandomNumberGenerator) -> void:
 		return
 	if absf(pos.y - TrackShapes.river_center(pos.x)) < TrackShapes.RIVER_HALF_WIDTH + 2.0:
 		return  # 不长在水里
-	var scale := rng.randf_range(3.0, 4.5)
 	_place_tree(
 		Vector3(pos.x, TrackShapes.wild_height(pos.x, pos.y), pos.y),
-		scale, rng.randf_range(0.0, TAU))
+		rng.randi_range(0, TREE_MODELS.size() - 1),
+		rng.randf_range(5.5, 9.0), rng.randf_range(0.0, TAU))
 
 
-## 放置一棵带碰撞、可被撞倒的树
-func _place_tree(pos: Vector3, model_scale: float, yaw: float) -> void:
+## 实例化树种并按包围盒缩放到目标高度，树根对齐模型原点（y=0）
+## AI 树模型面数高（约 14 万三角形），限制可视距离控制渲染开销
+func _instantiate_fitted_tree(type_idx: int, height: float) -> Node3D:
+	var model: Node3D = TREE_MODELS[type_idx].instantiate()
+	var aabb := CarRecolor.compute_local_aabb(model)
+	if aabb.size.y > 0.01:
+		var s := height / aabb.size.y
+		model.scale = Vector3.ONE * s
+		model.position.y = -aabb.position.y * s
+	for mi in CarRecolor.collect_meshes(model):
+		mi.visibility_range_end = 160.0
+		mi.visibility_range_end_margin = 24.0
+		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	return model
+
+
+## 赛道外围装饰树（无碰撞，纯装饰）
+func _place_fitted_tree(pos: Vector3, type_idx: int, height: float, yaw: float) -> void:
+	var model := _instantiate_fitted_tree(type_idx, height)
+	model.position = pos + Vector3(0, model.position.y, 0)
+	model.rotation.y = yaw
+	add_child(model)
+
+
+## 放置一棵带碰撞、可被撞倒的树（type_idx 选树种，height 为目标高度米数）
+func _place_tree(pos: Vector3, type_idx: int, height: float, yaw: float) -> void:
 	var tree := DestructibleTree.new()
 	tree.position = pos
 	tree.rotation.y = yaw
 
-	var model := TREE_MODEL.instantiate()
-	model.scale = Vector3.ONE * model_scale
+	var model := _instantiate_fitted_tree(type_idx, height)
 	tree.add_child(model)
 
-	# 树干碰撞体（不可破坏时是硬障碍）
+	# 树干碰撞体（不可破坏时是硬障碍），粗细随树高比例
 	var trunk := StaticBody3D.new()
 	trunk.name = "Trunk"
 	var trunk_shape := CollisionShape3D.new()
 	var cylinder := CylinderShape3D.new()
-	cylinder.radius = 0.12 * model_scale
-	cylinder.height = 1.4 * model_scale
+	cylinder.radius = clampf(0.022 * height, 0.12, 0.35)
+	cylinder.height = 0.3 * height
 	trunk_shape.shape = cylinder
-	trunk_shape.position.y = 0.7 * model_scale
+	trunk_shape.position.y = 0.15 * height
 	trunk.add_child(trunk_shape)
 	tree.add_child(trunk)
 
@@ -604,10 +641,10 @@ func _place_tree(pos: Vector3, model_scale: float, yaw: float) -> void:
 	hit_area.name = "HitArea"
 	var area_shape := CollisionShape3D.new()
 	var area_cylinder := CylinderShape3D.new()
-	area_cylinder.radius = 0.12 * model_scale + 0.5
-	area_cylinder.height = 1.6 * model_scale
+	area_cylinder.radius = cylinder.radius + 0.5
+	area_cylinder.height = cylinder.height + 0.4
 	area_shape.shape = area_cylinder
-	area_shape.position.y = 0.8 * model_scale
+	area_shape.position.y = trunk_shape.position.y + 0.2
 	hit_area.add_child(area_shape)
 	tree.add_child(hit_area)
 

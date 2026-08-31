@@ -43,3 +43,8 @@ Camaro ZL1 Parts Textured (camaro_parts_textured.glb) / charger_parts.glb（已�
 来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
 生成方式: 文生图（Nano Banana，prompt 强调四轮笔直 + 赛车服驾驶员）→ HD Model + Generate in Parts 分件（27 部件）→ Texture 工作区 4K 二次贴图 → tools/straighten_wheels.py 矫正后轮 4~6° 束角
 注: 驾驶座含赛车服+头盔驾驶员模型；带原生贴图，不参与游戏内换色（recolor: false）。
+
+野外树种库 (assets/trees/: pine.glb / oak.glb / birch.glb / dead_tree.glb)
+来源: Tripo3D AI 生成（Tripo Pro 订阅账号，含商用授权）
+生成方式: 文生图（Nano Banana，3:4 竖版单树白底）→ HD Model + Texture 4K/PBR 一步生成
+注: 单网格贴图模型，游戏内按目标高度自动归一化缩放，可视距离 160m 外渐隐以控制渲染开销。

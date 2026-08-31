@@ -29,7 +29,7 @@ const GP_POINTS := [
 const RIVER_HALF_WIDTH := 8.0 ## 涉水区半宽（米）
 const RIVER_DEPTH := 1.4 ## 河床下切深度（米）
 const WATER_LEVEL := -0.35 ## 水面高度
-const WILD_HALF_SIZE := 160.0 ## 野外区域半边长（米）
+const WILD_HALF_SIZE := 320.0 ## 野外区域半边长（米，面积约为原 160 版的四倍）
 const WILD_SPAWN := Vector2(0, -120) ## 出生点（河南岸）
 
 
