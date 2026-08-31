@@ -1,14 +1,37 @@
-[gd_scene load_steps=4 format=3 uid="uid://xuanrace_car_select"]
+[gd_scene load_steps=8 format=3 uid="uid://xuanrace_car_select"]
 
 [ext_resource type="Script" path="res://scripts/ui/car_select.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/track_preview.gd" id="3"]
 
 [sub_resource type="Environment" id="preview_env"]
 background_mode = 1
-background_color = Color(0.03, 0.04, 0.02, 1)
+background_color = Color(0.018, 0.024, 0.014, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.75, 0.78, 0.85, 1)
-ambient_light_energy = 0.8
+ambient_light_color = Color(0.72, 0.76, 0.84, 1)
+ambient_light_energy = 0.7
+
+[sub_resource type="StandardMaterial3D" id="podium_mat"]
+albedo_color = Color(0.05, 0.06, 0.045, 1)
+roughness = 0.35
+metallic = 0.6
+
+[sub_resource type="CylinderMesh" id="podium_mesh"]
+top_radius = 1.85
+bottom_radius = 1.95
+height = 0.09
+radial_segments = 64
+
+[sub_resource type="StandardMaterial3D" id="ring_mat"]
+albedo_color = Color(0.78, 0.96, 0.02, 1)
+emission_enabled = true
+emission = Color(0.78, 0.96, 0.02, 1)
+emission_energy_multiplier = 2.2
+
+[sub_resource type="TorusMesh" id="ring_mesh"]
+inner_radius = 1.72
+outer_radius = 1.84
+rings = 64
+ring_segments = 12
 
 [node name="CarSelect" type="Control"]
 anchors_preset = 15
@@ -21,7 +44,7 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
-color = Color(0.03, 0.04, 0.02, 1)
+color = Color(0.018, 0.024, 0.014, 1)
 
 [node name="PreviewContainer" type="SubViewportContainer" parent="."]
 unique_name_in_owner = true
@@ -37,19 +60,47 @@ size = Vector2i(1920, 1080)
 
 [node name="World" type="Node3D" parent="PreviewContainer/SubViewport"]
 
+[node name="Podium" type="MeshInstance3D" parent="PreviewContainer/SubViewport/World"]
+mesh = SubResource("podium_mesh")
+surface_material_override/0 = SubResource("podium_mat")
+
+[node name="Ring" type="MeshInstance3D" parent="PreviewContainer/SubViewport/World"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("ring_mesh")
+surface_material_override/0 = SubResource("ring_mat")
+
 [node name="PreviewPivot" type="Node3D" parent="PreviewContainer/SubViewport/World"]
 unique_name_in_owner = true
+position = Vector3(0, 0.09, 0)
 
 [node name="PreviewCamera" type="Camera3D" parent="PreviewContainer/SubViewport/World"]
 unique_name_in_owner = true
-position = Vector3(2.0, 1.1, -2.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 1.15, -2.3)
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="PreviewContainer/SubViewport/World"]
 rotation = Vector3(-0.7, 0.6, 0)
 shadow_enabled = true
 
+[node name="SpotLight" type="SpotLight3D" parent="PreviewContainer/SubViewport/World"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 4.2, -1.2)
+light_color = Color(0.95, 1, 0.82, 1)
+light_energy = 6.0
+spot_range = 8.0
+spot_angle = 32.0
+shadow_enabled = true
+
 [node name="WorldEnvironment" type="WorldEnvironment" parent="PreviewContainer/SubViewport/World"]
 environment = SubResource("preview_env")
+
+[node name="Vignette" type="TextureRect" parent="."]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 1
 
 [node name="TrackPreview" type="Control" parent="."]
 unique_name_in_owner = true
@@ -60,33 +111,65 @@ anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("3")
 
-[node name="Title" type="Label" parent="."]
+[node name="StepBar" type="HBoxContainer" parent="."]
+offset_left = 52.0
+offset_top = 34.0
+offset_right = 652.0
+offset_bottom = 74.0
+theme_override_constants/separation = 10
+
+[node name="StepModel" type="Label" parent="StepBar"]
 unique_name_in_owner = true
-offset_left = 48.0
-offset_top = 36.0
-offset_right = 448.0
-offset_bottom = 88.0
-theme_override_font_sizes/font_size = 36
-text = "第 1 步：选择车型"
+theme_override_font_sizes/font_size = 19
+text = "01  车型"
+
+[node name="StepColor" type="Label" parent="StepBar"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 19
+text = "02  颜色"
+
+[node name="StepTrack" type="Label" parent="StepBar"]
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 19
+text = "03  赛道"
 
 [node name="CarName" type="Label" parent="."]
 unique_name_in_owner = true
-offset_left = 48.0
-offset_top = 92.0
-offset_right = 448.0
-offset_bottom = 136.0
-theme_override_font_sizes/font_size = 28
+offset_left = 56.0
+offset_top = 88.0
+offset_right = 900.0
+offset_bottom = 164.0
+theme_override_font_sizes/font_size = 56
 text = "F1 赛车"
+
+[node name="Counter" type="Label" parent="."]
+unique_name_in_owner = true
+offset_left = 60.0
+offset_top = 166.0
+offset_right = 500.0
+offset_bottom = 200.0
+theme_override_font_sizes/font_size = 24
+text = "01 / 09"
+
+[node name="SurfaceTag" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+offset_left = 60.0
+offset_top = 168.0
+offset_right = 400.0
+offset_bottom = 204.0
+theme_override_font_sizes/font_size = 19
+text = "沥青路面"
 
 [node name="PrevButton" type="Button" parent="."]
 unique_name_in_owner = true
 anchor_top = 0.5
 anchor_bottom = 0.5
-offset_left = 32.0
-offset_top = -36.0
-offset_right = 104.0
-offset_bottom = 36.0
-theme_override_font_sizes/font_size = 32
+offset_left = 36.0
+offset_top = -46.0
+offset_right = 124.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 38
 text = "◀"
 
 [node name="NextButton" type="Button" parent="."]
@@ -95,11 +178,11 @@ anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -104.0
-offset_top = -36.0
-offset_right = -32.0
-offset_bottom = 36.0
-theme_override_font_sizes/font_size = 32
+offset_left = -124.0
+offset_top = -46.0
+offset_right = -36.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 38
 text = "▶"
 
 [node name="ColorRow" type="HBoxContainer" parent="."]
@@ -109,11 +192,11 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -230.0
-offset_top = -124.0
-offset_right = 230.0
-offset_bottom = -68.0
-theme_override_constants/separation = 12
+offset_left = -300.0
+offset_top = -158.0
+offset_right = 300.0
+offset_bottom = -102.0
+theme_override_constants/separation = 14
 alignment = 1
 
 [node name="DestructibleToggle" type="CheckButton" parent="."]
@@ -123,10 +206,10 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -340.0
-offset_top = -148.0
+offset_left = -392.0
+offset_top = -172.0
 offset_right = -48.0
-offset_bottom = -116.0
+offset_bottom = -136.0
 theme_override_font_sizes/font_size = 18
 text = "允许破坏（可撞倒树木）"
 
@@ -136,11 +219,11 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -340.0
-offset_top = -104.0
+offset_left = -392.0
+offset_top = -120.0
 offset_right = -48.0
-offset_bottom = -40.0
-theme_override_font_sizes/font_size = 24
+offset_bottom = -52.0
+theme_override_font_sizes/font_size = 26
 text = "下一步：选择颜色"
 
 [node name="BackButton" type="Button" parent="."]
@@ -148,8 +231,22 @@ unique_name_in_owner = true
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 48.0
-offset_top = -96.0
-offset_right = 268.0
-offset_bottom = -44.0
-theme_override_font_sizes/font_size = 18
-text = "返回主菜单"
+offset_top = -112.0
+offset_right = 288.0
+offset_bottom = -56.0
+theme_override_font_sizes/font_size = 19
+text = "◀ 返回主菜单"
+
+[node name="HintFooter" type="Label" parent="."]
+unique_name_in_owner = true
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -48.0
+offset_right = 220.0
+offset_bottom = -20.0
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
+text = "◀ ▶ 方向键切换 · Enter 确认 · Esc 返回"

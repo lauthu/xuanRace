@@ -1,0 +1,8 @@
+字体资产
+========
+
+Rajdhani-Regular.ttf / Rajdhani-Medium.ttf / Rajdhani-SemiBold.ttf / Rajdhani-Bold.ttf
+- 来源：Google Fonts "Rajdhani"（https://fonts.google.com/specimen/Rajdhani）
+- 作者：Indian Type Foundry
+- 协议：SIL Open Font License 1.1（OFL，可自由商用/嵌入，无需署名）
+- 用途：UI 拉丁字母与数字展示字体（中文由系统字体回退渲染）

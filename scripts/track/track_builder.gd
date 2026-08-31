@@ -29,9 +29,22 @@ const TREE_MODELS: Array[PackedScene] = [
 	preload("res://assets/trees/birch.glb"),
 	preload("res://assets/trees/dead_tree.glb"),
 ]
+## 树种索引（对应 TREE_MODELS）
+const TREE_PINE := 0
+const TREE_OAK := 1
+const TREE_BIRCH := 2
+const TREE_DEAD := 3
 const BANNER_RED := preload("res://assets/kenney_racing_kit/models/bannerTowerRed.glb")
 const BANNER_GREEN := preload("res://assets/kenney_racing_kit/models/bannerTowerGreen.glb")
 const FLAG_CHECKERS := preload("res://assets/kenney_racing_kit/models/flagCheckers.glb")
+
+## 草地纹理（Poly Haven leafy_grass，CC0，见 assets/ground/LICENSE.txt）
+const GRASS_DIFFUSE := preload("res://assets/ground/leafy_grass_diff_1k.jpg")
+const GRASS_NORMAL := preload("res://assets/ground/leafy_grass_nor_gl_1k.jpg")
+const GRASS_ROUGHNESS := preload("res://assets/ground/leafy_grass_rough_1k.jpg")
+const GROUND_UV_TILE := 8.0 ## 草地纹理平铺尺寸（米/张）
+## 地面色调向白色靠拢的比例：albedo 与纹理是相乘关系，纯色档案色太暗会压黑纹理
+const GROUND_TINT_BLEND := 0.65
 
 ## 路面材质档案
 const SURFACE_PROFILES := {
@@ -62,9 +75,6 @@ const SURFACE_PROFILES := {
 }
 
 const WILD_HALF_SIZE := TrackShapes.WILD_HALF_SIZE ## 野外区域半边长（米）
-const WILD_CLUSTER_COUNT := 20 ## 密林团数量
-const WILD_CLUSTER_TREES := 12 ## 每个密林团的树数（均值）
-const WILD_SPARSE_TREES := 32 ## 稀疏散树数量
 
 var _shape := TrackShapes.Shape.ELLIPSE
 var _profile: Dictionary = SURFACE_PROFILES["asphalt"]
@@ -145,6 +155,17 @@ func _make_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
+## 草地纹理材质：纹理提供细节，档案色调浅染保留各赛道的地表色彩倾向
+func _make_ground_material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color.lerp(Color.WHITE, GROUND_TINT_BLEND)
+	material.albedo_texture = GRASS_DIFFUSE
+	material.normal_enabled = true
+	material.normal_texture = GRASS_NORMAL
+	material.roughness_texture = GRASS_ROUGHNESS
+	return material
+
+
 func _build_ground() -> void:
 	var body := StaticBody3D.new()
 	body.name = "GroundBody"
@@ -171,7 +192,11 @@ func _build_flat_ground(body: StaticBody3D) -> void:
 	var mesh_instance := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(_ground_size, _ground_size)
-	plane.material = _make_material(_profile["ground"])
+	# PlaneMesh 的 UV 覆盖 0..1，按地面边长放大 UV 实现平铺
+	var material := _make_ground_material(_profile["ground"])
+	var tiling := _ground_size / GROUND_UV_TILE
+	material.uv1_scale = Vector3(tiling, tiling, 1.0)
+	plane.material = material
 	mesh_instance.mesh = plane
 	body.add_child(mesh_instance)
 
@@ -194,11 +219,14 @@ func _build_bumpy_ground(body: StaticBody3D) -> void:
 	shape.shape = heightmap
 	body.add_child(shape)
 
-	# 视觉：细分网格
+	# 视觉：细分网格（UV 取世界坐标 xz，按 GROUND_UV_TILE 平铺）
 	var half := _ground_size * 0.5
 	var cell := _ground_size / _ground_grid
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var colors := PackedColorArray()
+	var moisture_tint := _shape == TrackShapes.Shape.WILD
 	var indices := PackedInt32Array()
 	for gz in _ground_grid + 1:
 		for gx in _ground_grid + 1:
@@ -206,6 +234,14 @@ func _build_bumpy_ground(body: StaticBody3D) -> void:
 			var z := -half + gz * cell
 			vertices.append(Vector3(x, TrackShapes.bump_height(_shape, x, z), z))
 			normals.append(_surface_normal(x, z))
+			uvs.append(Vector2(x, z) / GROUND_UV_TILE)
+			if moisture_tint:
+				# 近河葱郁、远河偏干黄，叠加低频噪声避免均质（顶点色与草地纹理相乘）
+				var dist := absf(z - TrackShapes.river_center(x))
+				var moisture := clampf(1.0 - dist / 55.0, 0.0, 1.0)
+				var n := 0.94 + 0.06 * sin(x * 0.31 + z * 0.17) * sin(x * 0.13 - z * 0.23)
+				var c := Color(1.06, 1.02, 0.88).lerp(Color(0.72, 1.0, 0.66), moisture)
+				colors.append(Color(c.r * n, c.g * n, c.b * n))
 	for gz in _ground_grid:
 		for gx in _ground_grid:
 			var a := gz * (_ground_grid + 1) + gx
@@ -214,36 +250,47 @@ func _build_bumpy_ground(body: StaticBody3D) -> void:
 			indices.append_array([a, a + 1, b, a + 1, b + 1, b])
 
 	var mesh_instance := MeshInstance3D.new()
-	mesh_instance.mesh = _make_strip_mesh(vertices, normals, indices, _profile["ground"])
+	mesh_instance.mesh = _make_strip_mesh(vertices, normals, indices, _profile["ground"], uvs, colors)
 	body.add_child(mesh_instance)
 
 
 func _build_infield() -> void:
 	var vertices := PackedVector3Array([Vector3.UP * 0.01])
 	var normals := PackedVector3Array([Vector3.UP])
+	var uvs := PackedVector2Array([Vector2.ZERO])
 	var indices := PackedInt32Array()
 	var inner := track_width * 0.5 + (CURB_WIDTH if _profile["has_curbs"] else 0.0)
 	for i in ROAD_SEGMENTS + 1:
-		vertices.append(_point3(TAU * i / ROAD_SEGMENTS, inner) + Vector3.UP * 0.01)
+		var p := _point3(TAU * i / ROAD_SEGMENTS, inner) + Vector3.UP * 0.01
+		vertices.append(p)
 		normals.append(Vector3.UP)
+		uvs.append(Vector2(p.x, p.z) / GROUND_UV_TILE)
 	for i in ROAD_SEGMENTS:
 		indices.append_array([0, i + 2, i + 1])
 	var infield := MeshInstance3D.new()
 	infield.name = "Infield"
-	infield.mesh = _make_strip_mesh(vertices, normals, indices, _profile["infield"])
+	infield.mesh = _make_strip_mesh(vertices, normals, indices, _profile["infield"], uvs)
 	add_child(infield)
 
 
 func _make_strip_mesh(vertices: PackedVector3Array, normals: PackedVector3Array,
-		indices: PackedInt32Array, color: Color) -> ArrayMesh:
+		indices: PackedInt32Array, color: Color, uvs := PackedVector2Array(),
+		colors := PackedColorArray()) -> ArrayMesh:
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_INDEX] = indices
+	if not uvs.is_empty():
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+	if not colors.is_empty():
+		arrays[Mesh.ARRAY_COLOR] = colors
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.surface_set_material(0, _make_material(color))
+	var material := _make_ground_material(color) if not uvs.is_empty() else _make_material(color)
+	if not colors.is_empty():
+		material.vertex_color_use_as_albedo = true  # 顶点色作为乘算色调
+	mesh.surface_set_material(0, material)
 	return mesh
 
 
@@ -467,6 +514,7 @@ func _build_wild() -> void:
 	body.name = "GroundBody"
 	add_child(body)
 	_build_bumpy_ground(body)  # bump_height 对 WILD 返回缓坡+河道地形
+	_build_riverbanks()  # 沙土滩涂在草地与水面之间过渡
 	_build_water()
 	_build_square_walls()
 	_build_wild_trees()
@@ -474,41 +522,104 @@ func _build_wild() -> void:
 
 
 func _build_water() -> void:
-	# 沿蜿蜒河道生成水面条带网格
+	# 沿蜿蜒河道生成水面条带网格（四列顶点：近岸浅透、河心深蓝不透）
 	var water := MeshInstance3D.new()
 	water.name = "Water"
-	var half_width := TrackShapes.RIVER_HALF_WIDTH * 1.1
+	var hw := TrackShapes.RIVER_HALF_WIDTH * 1.1
+	var cols := [-hw, -hw * 0.5, hw * 0.5, hw]
+	var col_colors := [
+		Color(0.38, 0.58, 0.72, 0.35), Color(0.14, 0.36, 0.55, 0.8),
+		Color(0.14, 0.36, 0.55, 0.8), Color(0.38, 0.58, 0.72, 0.35)]
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 	var step := 4.0
 	var count := int(_ground_size / step)
 	for i in count + 1:
 		var x := -_ground_size * 0.5 + i * step
 		var zc := TrackShapes.river_center(x)
-		vertices.append(Vector3(x, TrackShapes.WATER_LEVEL, zc - half_width))
-		vertices.append(Vector3(x, TrackShapes.WATER_LEVEL, zc + half_width))
-		normals.append(Vector3.UP)
-		normals.append(Vector3.UP)
+		for j in cols.size():
+			vertices.append(Vector3(x, TrackShapes.WATER_LEVEL, zc + cols[j]))
+			normals.append(Vector3.UP)
+			colors.append(col_colors[j])
+	var w := cols.size()
 	for i in count:
-		var a := i * 2
-		# 从上方看顺时针为正面
-		indices.append_array([a, a + 2, a + 1, a + 1, a + 2, a + 3])
+		for j in w - 1:
+			var a := i * w + j
+			# 从上方看顺时针为正面
+			indices.append_array([a, a + w, a + 1, a + 1, a + w, a + w + 1])
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.2, 0.45, 0.65, 0.65)
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = 0.1
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 0.08
+	material.metallic = 0.15
 	mesh.surface_set_material(0, material)
 	water.mesh = mesh
 	add_child(water)
+
+
+## 河岸滩涂带：贴地形的沙土带铺满河床并延伸到两岸，
+## 中心湿泥深色（透过水面可见河床），向外过渡到湿沙、干沙、草地
+func _build_riverbanks() -> void:
+	var hw := TrackShapes.RIVER_HALF_WIDTH
+	var cols := [-20.0, -12.0, -hw - 0.5, 0.0, hw + 0.5, 12.0, 20.0]
+	var col_colors := [
+		Color(0.42, 0.45, 0.27),  # 外缘：沙草过渡
+		Color(0.60, 0.52, 0.38),  # 干沙
+		Color(0.48, 0.41, 0.30),  # 湿沙
+		Color(0.34, 0.29, 0.21),  # 河底湿泥
+		Color(0.48, 0.41, 0.30),
+		Color(0.60, 0.52, 0.38),
+		Color(0.42, 0.45, 0.27),
+	]
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	var step := 3.0
+	var count := int(_ground_size / step)
+	for i in count + 1:
+		var x := -_ground_size * 0.5 + i * step
+		var zc := TrackShapes.river_center(x)
+		for j in cols.size():
+			var z: float = zc + cols[j]
+			# 全程贴地形（河床处自然没入水下），抬高 4cm 避免与地面 z-fighting
+			var y: float = TrackShapes.wild_height(x, z) + 0.04
+			vertices.append(Vector3(x, y, z))
+			normals.append(Vector3.UP)
+			colors.append(col_colors[j])
+	var w := cols.size()
+	for i in count:
+		for j in w - 1:
+			var a := i * w + j
+			indices.append_array([a, a + w, a + 1, a + 1, a + w, a + w + 1])
+
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 0.95
+	mesh.surface_set_material(0, material)
+	var banks := MeshInstance3D.new()
+	banks.name = "Riverbanks"
+	banks.mesh = mesh
+	add_child(banks)
 
 
 func _build_square_walls() -> void:
@@ -551,19 +662,52 @@ func _build_square_walls() -> void:
 func _build_wild_trees() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
-	# 密林团：团中心附近高斯散布，形成有密有疏的分布
-	for c in WILD_CLUSTER_COUNT:
+	# 河岸林带：阔叶树亲水（橡树/白桦为主），沿河两岸 6~40 米内成团
+	for c in 14:
+		var cx := rng.randf_range(-WILD_HALF_SIZE + 20.0, WILD_HALF_SIZE - 20.0)
+		var side := 1.0 if rng.randi() % 2 == 0 else -1.0
+		var cz: float = TrackShapes.river_center(cx) \
+			+ side * (TrackShapes.RIVER_HALF_WIDTH + rng.randf_range(6.0, 40.0))
+		var tree_count := 12 + rng.randi_range(-3, 4)
+		for i in tree_count:
+			var pos := Vector2(cx, cz) + Vector2(
+				rng.randfn(0.0, 10.0), rng.randfn(0.0, 10.0))
+			_try_place_tree(pos, rng, _pick_species(rng, [45, 35, 15, 5]),
+				rng.randf_range(6.0, 9.5))
+	# 高地松林：远离河道（>55 米），松树为主
+	for c in 10:
 		var center := _random_land_pos(rng)
-		if center == Vector2.INF:
+		if center == Vector2.INF or _dist_to_river(center) < 55.0:
 			continue
-		var tree_count := WILD_CLUSTER_TREES + rng.randi_range(-2, 3)
+		var tree_count := 10 + rng.randi_range(-2, 4)
 		for i in tree_count:
 			var pos := center + Vector2(
 				rng.randfn(0.0, 12.0), rng.randfn(0.0, 12.0))
-			_try_place_tree(pos, rng)
-	# 稀疏散树
-	for i in WILD_SPARSE_TREES:
-		_try_place_tree(_random_land_pos(rng), rng)
+			_try_place_tree(pos, rng, _pick_species(rng, [20, 15, 60, 5]),
+				rng.randf_range(6.5, 10.0))
+	# 稀疏散树：混合分布，孤生枯树比例较高（自然枯立木）
+	for i in 36:
+		_try_place_tree(_random_land_pos(rng), rng, _pick_species(rng, [25, 25, 30, 20]),
+			rng.randf_range(5.0, 8.5))
+
+
+## 按权重抽树种，weights = [橡, 白桦, 松, 枯树]
+func _pick_species(rng: RandomNumberGenerator, weights: Array) -> int:
+	var total := 0
+	for w in weights:
+		total += w
+	var roll := rng.randi_range(0, total - 1)
+	var acc := 0
+	var order := [TREE_OAK, TREE_BIRCH, TREE_PINE, TREE_DEAD]
+	for i in order.size():
+		acc += weights[i]
+		if roll < acc:
+			return order[i]
+	return TREE_OAK
+
+
+func _dist_to_river(pos: Vector2) -> float:
+	return absf(pos.y - TrackShapes.river_center(pos.x))
 
 
 ## 在允许区域（不压河道、不压出生点）内取一个随机点；失败返回 Vector2.INF
@@ -578,7 +722,7 @@ func _random_land_pos(rng: RandomNumberGenerator) -> Vector2:
 	return Vector2.INF
 
 
-func _try_place_tree(pos: Vector2, rng: RandomNumberGenerator) -> void:
+func _try_place_tree(pos: Vector2, rng: RandomNumberGenerator, type_idx: int, height: float) -> void:
 	if pos == Vector2.INF:
 		return
 	if absf(pos.x) > WILD_HALF_SIZE - 4 or absf(pos.y) > WILD_HALF_SIZE - 4:
@@ -587,8 +731,7 @@ func _try_place_tree(pos: Vector2, rng: RandomNumberGenerator) -> void:
 		return  # 不长在水里
 	_place_tree(
 		Vector3(pos.x, TrackShapes.wild_height(pos.x, pos.y), pos.y),
-		rng.randi_range(0, TREE_MODELS.size() - 1),
-		rng.randf_range(5.5, 9.0), rng.randf_range(0.0, TAU))
+		type_idx, height, rng.randf_range(0.0, TAU))
 
 
 ## 实例化树种并按包围盒缩放到目标高度，树根对齐模型原点（y=0）
@@ -615,6 +758,24 @@ func _place_fitted_tree(pos: Vector3, type_idx: int, height: float, yaw: float) 
 	add_child(model)
 
 
+static var _mound_mesh: SphereMesh = null
+
+## 树根泥土基座的共享网格（半径 1 的半球，使用时按树缩放）
+static func _get_mound_mesh() -> SphereMesh:
+	if _mound_mesh == null:
+		_mound_mesh = SphereMesh.new()
+		_mound_mesh.is_hemisphere = true
+		_mound_mesh.radial_segments = 16
+		_mound_mesh.rings = 4
+		_mound_mesh.radius = 1.0
+		_mound_mesh.height = 1.0
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.30, 0.23, 0.15)
+		mat.roughness = 1.0
+		_mound_mesh.material = mat
+	return _mound_mesh
+
+
 ## 放置一棵带碰撞、可被撞倒的树（type_idx 选树种，height 为目标高度米数）
 func _place_tree(pos: Vector3, type_idx: int, height: float, yaw: float) -> void:
 	var tree := DestructibleTree.new()
@@ -623,6 +784,13 @@ func _place_tree(pos: Vector3, type_idx: int, height: float, yaw: float) -> void
 
 	var model := _instantiate_fitted_tree(type_idx, height)
 	tree.add_child(model)
+
+	# 树根泥土基座：压扁半球遮住树根与地面的接缝，交接更自然
+	var mound := MeshInstance3D.new()
+	mound.mesh = _get_mound_mesh()
+	mound.scale = Vector3(clampf(0.09 * height, 0.7, 1.6), 0.3, clampf(0.09 * height, 0.7, 1.6))
+	mound.position.y = 0.02
+	tree.add_child(mound)
 
 	# 树干碰撞体（不可破坏时是硬障碍），粗细随树高比例
 	var trunk := StaticBody3D.new()

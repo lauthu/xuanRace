@@ -18,44 +18,97 @@ expand_mode = 1
 stretch_mode = 6
 texture = ExtResource("2")
 
-[node name="Dim" type="ColorRect" parent="."]
+[node name="SideFade" type="TextureRect" parent="."]
+unique_name_in_owner = true
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
-color = Color(0.01, 0.015, 0.01, 0.45)
+expand_mode = 1
+stretch_mode = 1
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Vignette" type="TextureRect" parent="."]
+unique_name_in_owner = true
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 1
 
-[node name="Backdrop" type="PanelContainer" parent="Center"]
+[node name="AccentBar" type="ColorRect" parent="."]
 unique_name_in_owner = true
+anchor_left = 0.06
+anchor_top = 0.5
+anchor_right = 0.06
+anchor_bottom = 0.5
+offset_top = -232.0
+offset_right = 148.0
+offset_bottom = -224.0
+mouse_filter = 2
+color = Color(0.78, 0.96, 0.02, 1)
 
-[node name="VBox" type="VBoxContainer" parent="Center/Backdrop"]
-theme_override_constants/separation = 24
-
-[node name="Title" type="Label" parent="Center/Backdrop/VBox"]
+[node name="Title" type="Label" parent="."]
 unique_name_in_owner = true
-theme_override_font_sizes/font_size = 72
-horizontal_alignment = 1
-text = "XuanRace"
+anchor_left = 0.06
+anchor_top = 0.5
+anchor_right = 0.06
+anchor_bottom = 0.5
+offset_top = -220.0
+offset_right = 900.0
+offset_bottom = -70.0
+theme_override_font_sizes/font_size = 118
+text = "XUANRACE"
 
-[node name="Subtitle" type="Label" parent="Center/Backdrop/VBox"]
+[node name="Subtitle" type="Label" parent="."]
 unique_name_in_owner = true
-theme_override_font_sizes/font_size = 22
-horizontal_alignment = 1
-text = "极 速 轩 驰"
+anchor_left = 0.06
+anchor_top = 0.5
+anchor_right = 0.06
+anchor_bottom = 0.5
+offset_left = 6.0
+offset_top = -64.0
+offset_right = 700.0
+offset_bottom = -18.0
+theme_override_font_sizes/font_size = 30
+text = "极 速 轩 驰 · RALLY CHAMPIONSHIP"
 
-[node name="StartButton" type="Button" parent="Center/Backdrop/VBox"]
+[node name="StartButton" type="Button" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 60)
-theme_override_font_sizes/font_size = 26
+anchor_left = 0.06
+anchor_top = 0.5
+anchor_right = 0.06
+anchor_bottom = 0.5
+offset_top = 20.0
+offset_right = 400.0
+offset_bottom = 88.0
+theme_override_font_sizes/font_size = 30
+alignment = 0
 text = "开始比赛"
 
-[node name="QuitButton" type="Button" parent="Center/Backdrop/VBox"]
+[node name="QuitButton" type="Button" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 52)
-theme_override_font_sizes/font_size = 20
+anchor_left = 0.06
+anchor_top = 0.5
+anchor_right = 0.06
+anchor_bottom = 0.5
+offset_top = 104.0
+offset_right = 400.0
+offset_bottom = 164.0
+theme_override_font_sizes/font_size = 24
+alignment = 0
 text = "退出游戏"
+
+[node name="Footer" type="Label" parent="."]
+unique_name_in_owner = true
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -460.0
+offset_top = -44.0
+offset_right = -32.0
+offset_bottom = -16.0
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 2
+text = "XuanRace · Powered by Godot 4"
