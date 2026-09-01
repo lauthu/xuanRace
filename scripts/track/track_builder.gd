@@ -18,9 +18,8 @@ const CURB_WIDTH := 1.0 ## 路缘石宽度
 const DASH_WIDTH := 0.3 ## 中央虚线宽度
 const GROUND_SIZE := 400.0 ## 地面边长
 const WILD_GROUND_SIZE := 700.0 ## 野外区域地面边长（覆盖 320 半边长 + 余量）
-const HEIGHTMAP_RES := 601 ## 越野地形高度图分辨率（覆盖整个地面）
 const GROUND_GRID := 160 ## 越野地面网格细分
-const WILD_GROUND_GRID := 280 ## 野外地面网格细分（保持约 2.5 米/格）
+const WILD_GROUND_GRID := 350 ## 野外地面网格细分（2 米/格，与 1 米碰撞格距匹配）
 
 ## AI 生成的树种库（Tripo 管线：文生图 → HD Model 带贴图，见 assets/vehicles/LICENSE.txt）
 const TREE_MODELS: Array[PackedScene] = [
@@ -221,19 +220,22 @@ func _build_flat_ground(body: StaticBody3D) -> void:
 
 
 func _build_bumpy_ground(body: StaticBody3D) -> void:
-	# 物理：高度图碰撞，与视觉网格共用同一高度函数
+	# 物理：高度图碰撞，与视觉网格共用同一高度函数。
+	# 注意：HeightMapShape3D 的格距固定为 1 米，分辨率必须等于地面边长+1，
+	# 否则碰撞地形会按比例缩水（野外 700m 地面用 601 格时，中央以外没有碰撞）
+	var res := int(_ground_size) + 1
 	var shape := CollisionShape3D.new()
 	var heightmap := HeightMapShape3D.new()
-	heightmap.map_width = HEIGHTMAP_RES
-	heightmap.map_depth = HEIGHTMAP_RES
+	heightmap.map_width = res
+	heightmap.map_depth = res
 	var data := PackedFloat32Array()
-	data.resize(HEIGHTMAP_RES * HEIGHTMAP_RES)
-	var step := _ground_size / (HEIGHTMAP_RES - 1)
-	for gz in HEIGHTMAP_RES:
-		for gx in HEIGHTMAP_RES:
+	data.resize(res * res)
+	var step := _ground_size / float(res - 1)
+	for gz in res:
+		for gx in res:
 			var x := -_ground_size * 0.5 + gx * step
 			var z := -_ground_size * 0.5 + gz * step
-			data[gz * HEIGHTMAP_RES + gx] = TrackShapes.bump_height(_shape, x, z)
+			data[gz * res + gx] = TrackShapes.bump_height(_shape, x, z)
 	heightmap.map_data = data
 	shape.shape = heightmap
 	body.add_child(shape)

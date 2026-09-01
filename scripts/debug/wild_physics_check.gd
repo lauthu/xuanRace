@@ -25,7 +25,7 @@ func _process(_d: float) -> bool:
 			_f, _car.get_speed_kmh(),
 			_car.global_position.y - TrackShapes.bump_height(
 				TrackShapes.Shape.WILD, _car.global_position.x, _car.global_position.z)])
-	if _f == 540:
+	if _f == 1200:
 		print("极速: %.0f km/h | 最大车高偏差: %.2f m" % [_max_speed, _max_height_err])
 		root.get_texture().get_image().save_png("/tmp/wild_physics.png")
 		return true

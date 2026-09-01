@@ -10,7 +10,10 @@ full vehicle visible, 3/4 front view, studio lighting, plain grey background, re
 
 经验：
 - 写 `four wheels pointing straight forward` 可减少前轮烘焙偏角（否则要用 straighten_wheels.py 矫正）。
-- 要车内有驾驶员：闭式车厢写 `racing driver in helmet and racing suit visible through windshield`，开式座舱写 `racing driver in full helmet and racing suit seated in cockpit`。
+- 要车内有驾驶员：闭式座舱写 `racing driver in helmet and racing suit visible through windshield`，开式座舱写 `racing driver in full helmet and racing suit seated in cockpit`。
+- **闭式座舱的驾驶员经常被 3D 生成丢弃**（深色风挡时参考图里的人被忽略）。必须加强权重并逐字描述：
+  `racing driver wearing bright white helmet and colorful racing suit, clearly visible seated in driver's seat through the windshield, hands on steering wheel`，
+  并在贴图完成后从风挡角度目视确认有驾驶员再导出（踩过坑：GT 跑车第一版是空车）。
 - 中文品牌特征写具体（家族脸、姿态、轮胎样式）能显著提高选图质量。
 
 ---
@@ -76,11 +79,12 @@ reference for 3D modeling
 ```
 Modern GT sports car, sleek low-slung coupe body, aggressive front splitter,
 large rear wing, racing livery, four wheels pointing straight forward,
-racing driver in helmet and racing suit visible through windshield,
-full vehicle visible, 3/4 front view, studio lighting, plain grey background,
-reference for 3D modeling
+racing driver wearing bright white helmet and colorful racing suit,
+clearly visible seated in driver's seat through the windshield,
+hands on steering wheel, full vehicle visible, 3/4 front view,
+studio lighting, plain grey background, reference for 3D modeling
 ```
-- 状态：待生成
+- 状态：v1 空车（驾驶员被 3D 生成丢弃）→ v2 加强驾驶员措辞重新生成
 
 ### 2. F1 赛车（替换 Kenney raceCarRed.glb）
 ```
