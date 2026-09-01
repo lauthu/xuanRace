@@ -45,9 +45,9 @@ static func apply_slanted_font(control: Control, shear := 0.18) -> void:
 ## 全屏暗角（径向渐变：中心透明 → 边缘压暗）
 static func make_vignette() -> GradientTexture2D:
 	var grad := Gradient.new()
-	grad.offsets = PackedFloat32Array([0.0, 0.62, 1.0])
+	grad.offsets = PackedFloat32Array([0.0, 0.66, 1.0])
 	grad.colors = PackedColorArray([
-		Color(0, 0, 0, 0), Color(0, 0, 0, 0.14), Color(0, 0, 0, 0.72)])
+		Color(0, 0, 0, 0), Color(0, 0, 0, 0.10), Color(0, 0, 0, 0.5)])
 	var tex := GradientTexture2D.new()
 	tex.gradient = grad
 	tex.fill = GradientTexture2D.FILL_RADIAL
@@ -58,17 +58,33 @@ static func make_vignette() -> GradientTexture2D:
 	return tex
 
 
+## 页面底色辉光：中央微亮的墨绿渐变，避免纯黑死底
+static func make_backdrop_glow() -> GradientTexture2D:
+	var grad := Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 1.0])
+	grad.colors = PackedColorArray([
+		Color(0.085, 0.11, 0.075), Color(0.018, 0.024, 0.014)])
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.58)
+	tex.fill_to = Vector2(1.0, 0.58)
+	tex.width = 1024
+	tex.height = 1024
+	return tex
+
+
 ## 左侧压暗渐变（主菜单：让文字区从背景图上托起来，右侧保留画面）
 static func make_side_fade() -> GradientTexture2D:
 	var grad := Gradient.new()
-	grad.offsets = PackedFloat32Array([0.0, 0.42, 1.0])
+	grad.offsets = PackedFloat32Array([0.0, 0.7, 1.0])
 	grad.colors = PackedColorArray([
-		Color(INK, 0.96), Color(INK, 0.55), Color(INK, 0.0)])
+		Color(INK, 0.88), Color(INK, 0.18), Color(INK, 0.0)])
 	var tex := GradientTexture2D.new()
 	tex.gradient = grad
 	tex.fill = GradientTexture2D.FILL_LINEAR
 	tex.fill_from = Vector2(0.0, 0.5)
-	tex.fill_to = Vector2(0.75, 0.5)
+	tex.fill_to = Vector2(0.36, 0.5)
 	tex.width = 1024
 	tex.height = 64
 	return tex

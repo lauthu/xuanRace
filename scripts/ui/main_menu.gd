@@ -7,9 +7,8 @@ const SLIDE_DISTANCE := 56.0
 
 func _ready() -> void:
 	%SideFade.texture = UIStyle.make_side_fade()
-	%Vignette.texture = UIStyle.make_vignette()
 
-	UIStyle.apply_slanted_font(%Title)
+	UIStyle.apply_slanted_font(%Title, 0.24)
 	UIStyle.style_title(%Title)
 	UIStyle.apply_display_font(%Subtitle, false)
 	UIStyle.style_label(%Subtitle, UIStyle.LIME)

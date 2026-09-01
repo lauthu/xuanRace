@@ -18,7 +18,7 @@ const CURB_WIDTH := 1.0 ## 路缘石宽度
 const DASH_WIDTH := 0.3 ## 中央虚线宽度
 const GROUND_SIZE := 400.0 ## 地面边长
 const WILD_GROUND_SIZE := 700.0 ## 野外区域地面边长（覆盖 320 半边长 + 余量）
-const HEIGHTMAP_RES := 401 ## 越野地形高度图分辨率（覆盖整个地面）
+const HEIGHTMAP_RES := 601 ## 越野地形高度图分辨率（覆盖整个地面）
 const GROUND_GRID := 160 ## 越野地面网格细分
 const WILD_GROUND_GRID := 280 ## 野外地面网格细分（保持约 2.5 米/格）
 
@@ -34,6 +34,17 @@ const TREE_PINE := 0
 const TREE_OAK := 1
 const TREE_BIRCH := 2
 const TREE_DEAD := 3
+## AI 生成的小件库：花岗岩巨石 / 层状岩 / 绿篱灌木 / 蕨类
+const PROP_MODELS: Array[PackedScene] = [
+	preload("res://assets/props/boulder.glb"),
+	preload("res://assets/props/rock_ledge.glb"),
+	preload("res://assets/props/bush.glb"),
+	preload("res://assets/props/fern.glb"),
+]
+const PROP_BOULDER := 0
+const PROP_ROCK_LEDGE := 1
+const PROP_BUSH := 2
+const PROP_FERN := 3
 const BANNER_RED := preload("res://assets/kenney_racing_kit/models/bannerTowerRed.glb")
 const BANNER_GREEN := preload("res://assets/kenney_racing_kit/models/bannerTowerGreen.glb")
 const FLAG_CHECKERS := preload("res://assets/kenney_racing_kit/models/flagCheckers.glb")
@@ -80,6 +91,7 @@ var _shape := TrackShapes.Shape.ELLIPSE
 var _profile: Dictionary = SURFACE_PROFILES["asphalt"]
 var _ground_size := GROUND_SIZE ## 当前地面边长（野外区域更大）
 var _ground_grid := GROUND_GRID ## 当前地面网格细分
+var _water_material: StandardMaterial3D = null ## 水面材质（_process 中滚动 UV 模拟流动）
 
 
 func _ready() -> void:
@@ -98,6 +110,13 @@ func _ready() -> void:
 	_build_checkpoints()
 	_build_start_position()
 	_build_decorations()
+
+
+func _process(delta: float) -> void:
+	# 水面 UV 滚动模拟河流流动（沿 X 即河道走向）
+	if _water_material != null:
+		_water_material.uv1_offset.x += delta * 0.06
+		_water_material.uv1_offset.y = sin(Time.get_ticks_msec() / 1600.0) * 0.02
 
 
 ## GP 赛道：用 Road Generator 沿中心线生成公路
@@ -517,8 +536,170 @@ func _build_wild() -> void:
 	_build_riverbanks()  # 沙土滩涂在草地与水面之间过渡
 	_build_water()
 	_build_square_walls()
+	_build_perimeter_forest()  # 林缘树环 + 距离雾一起藏住围墙
 	_build_wild_trees()
+	_build_wild_props()
+	_build_wild_ambience()
 	_build_wild_start()
+
+
+## 石头与灌木点缀：河岸滩涂岩石（部分半浸水）、高地岩石、林下灌木层
+func _build_wild_props() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2024
+	# 河岸岩石
+	for i in 26:
+		var x := rng.randf_range(-WILD_HALF_SIZE + 10.0, WILD_HALF_SIZE - 10.0)
+		var side := 1.0 if rng.randi() % 2 == 0 else -1.0
+		var z := TrackShapes.river_center(x) \
+			+ side * (TrackShapes.RIVER_HALF_WIDTH + rng.randf_range(-3.0, 9.0))
+		_place_prop(rng.randi_range(PROP_BOULDER, PROP_ROCK_LEDGE),
+			Vector3(x, TrackShapes.wild_height(x, z), z),
+			rng.randf_range(0.5, 2.0), rng.randf_range(0.0, TAU), true)
+	# 高地岩石
+	for i in 14:
+		var pos := _random_land_pos(rng)
+		if pos == Vector2.INF or _dist_to_river(pos) < 40.0:
+			continue
+		_place_prop(rng.randi_range(PROP_BOULDER, PROP_ROCK_LEDGE),
+			Vector3(pos.x, TrackShapes.wild_height(pos.x, pos.y), pos.y),
+			rng.randf_range(0.6, 2.4), rng.randf_range(0.0, TAU), true)
+	# 灌木层：70% 河岸林下，30% 任意散生
+	for i in 90:
+		var pos: Vector2
+		if rng.randf() < 0.7:
+			var x := rng.randf_range(-WILD_HALF_SIZE + 10.0, WILD_HALF_SIZE - 10.0)
+			var side := 1.0 if rng.randi() % 2 == 0 else -1.0
+			var z := TrackShapes.river_center(x) \
+				+ side * (TrackShapes.RIVER_HALF_WIDTH + rng.randf_range(2.0, 42.0))
+			pos = Vector2(x, z)
+		else:
+			pos = _random_land_pos(rng)
+		if pos == Vector2.INF:
+			continue
+		if _dist_to_river(pos) < TrackShapes.RIVER_HALF_WIDTH + 2.0:
+			continue
+		_place_prop(PROP_BUSH + rng.randi_range(0, 1),
+			Vector3(pos.x, TrackShapes.wild_height(pos.x, pos.y), pos.y),
+			rng.randf_range(0.6, 1.6), rng.randf_range(0.0, TAU), false)
+
+
+## 放置小件：按包围盒缩放到目标高度、底部微沉入地面贴合坡面；
+## 岩石距离剔除 160m、灌木 90m；大石头（>1.4m）加球形碰撞体
+func _place_prop(type_idx: int, pos: Vector3, height: float, yaw: float, is_rock: bool) -> void:
+	var model: Node3D = PROP_MODELS[type_idx].instantiate()
+	var aabb := CarRecolor.compute_local_aabb(model)
+	var s := 1.0
+	if aabb.size.y > 0.01:
+		s = height / aabb.size.y
+	model.scale = Vector3.ONE * s
+	model.position = pos
+	model.position.y += -aabb.position.y * s - 0.08
+	model.rotation.y = yaw
+	var cull := 160.0 if is_rock else 90.0
+	for mi in CarRecolor.collect_meshes(model):
+		mi.visibility_range_end = cull
+		mi.visibility_range_end_margin = 16.0
+		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+		if not is_rock:
+			# 灌木/蕨类随风轻摆（摆幅比树冠小）
+			for surf in mi.mesh.get_surface_count():
+				var src := mi.get_active_material(surf) as StandardMaterial3D
+				if src != null:
+					mi.set_surface_override_material(surf,
+						_get_sway_material(100 + type_idx, src, aabb.size.y, 0.008))
+	add_child(model)
+	if is_rock and height > 1.4:
+		var body := StaticBody3D.new()
+		body.name = "RockBody"
+		var shape := CollisionShape3D.new()
+		var sphere := SphereShape3D.new()
+		sphere.radius = height * 0.45
+		shape.shape = sphere
+		shape.position.y = height * 0.35
+		body.add_child(shape)
+		body.position = pos
+		add_child(body)
+
+
+## 沿围墙内侧种一圈密树，把人工边界藏进林缘（无碰撞纯装饰）
+func _build_perimeter_forest() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var inset := WILD_HALF_SIZE - 9.0
+	var step := 7.0
+	var side_len := WILD_HALF_SIZE * 2.0
+	var count := int(side_len * 4.0 / step)
+	for i in count:
+		var d := i * step  # 从西南角沿周长展开
+		var side := int(d / side_len)
+		var seg := d - side * side_len - WILD_HALF_SIZE  # [-half, half]
+		var pos := Vector2.ZERO
+		match side:
+			0: pos = Vector2(seg, -inset)  # 南边
+			1: pos = Vector2(inset, seg)   # 东边
+			2: pos = Vector2(-seg, inset)  # 北边（反向避免重叠角）
+			3: pos = Vector2(-inset, -seg) # 西边
+		pos += Vector2(rng.randf_range(-2.5, 2.5), rng.randf_range(-2.5, 2.5))
+		# 林缘以高大松树为主，遮挡效果最好
+		var type_idx: int = TREE_PINE if rng.randf() < 0.7 else TREE_OAK
+		var height := rng.randf_range(8.0, 12.0)
+		var model := _instantiate_fitted_tree(type_idx, height)
+		model.position = Vector3(pos.x, TrackShapes.wild_height(pos.x, pos.y) + model.position.y, pos.y)
+		model.rotation.y = rng.randf_range(0.0, TAU)
+		add_child(model)
+
+
+## 环境音：全域风声 + 沿河分布式流水声（程序生成噪声，无需音频资源）
+func _build_wild_ambience() -> void:
+	var wind := AudioStreamPlayer.new()
+	wind.name = "WindAmbience"
+	wind.stream = _make_noise_stream(true, 0.13, 0.35)
+	wind.volume_db = -20.0
+	add_child(wind)
+	wind.play()
+
+	for i in 9:
+		var x := -WILD_HALF_SIZE + 40.0 + i * (WILD_HALF_SIZE - 40.0) / 4.0
+		var river := AudioStreamPlayer3D.new()
+		river.name = "RiverAmbience%d" % i
+		river.stream = _make_noise_stream(false, 2.7, 0.5)
+		river.volume_db = -14.0
+		river.unit_size = 12.0
+		river.max_distance = 90.0
+		river.position = Vector3(x, TrackShapes.WATER_LEVEL + 0.5, TrackShapes.river_center(x))
+		add_child(river)
+		river.play()
+
+
+## 程序生成 4 秒循环噪声：brownian=true 为低频风声，false 为颗粒感水声
+static func _make_noise_stream(brownian: bool, lfo_hz: float, lfo_depth: float) -> AudioStreamWAV:
+	var sr := 22050
+	var n := sr * 4
+	var data := PackedByteArray()
+	data.resize(n * 2)  # 16-bit 单声道
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42 if brownian else 77
+	var last := 0.0
+	for i in n:
+		var white := rng.randf_range(-1.0, 1.0)
+		var s: float
+		if brownian:
+			last = clampf((last + 0.02 * white) / 1.02, -0.5, 0.5) * 3.5
+			s = last
+		else:
+			last = last * 0.72 + white * 0.28
+			s = last * 1.8
+		var lfo := 1.0 + lfo_depth * sin(TAU * lfo_hz * i / sr)
+		data.encode_s16(i * 2, int(clampf(s * lfo, -1.0, 1.0) * 32000))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = sr
+	stream.stereo = false
+	stream.data = data
+	stream.loop_mode = AudioStreamWAV.LOOP_PINGPONG  # 往返循环避免接缝爆音
+	stream.loop_end = n
+	return stream
 
 
 func _build_water() -> void:
@@ -533,6 +714,7 @@ func _build_water() -> void:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
+	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 	var step := 4.0
 	var count := int(_ground_size / step)
@@ -543,6 +725,7 @@ func _build_water() -> void:
 			vertices.append(Vector3(x, TrackShapes.WATER_LEVEL, zc + cols[j]))
 			normals.append(Vector3.UP)
 			colors.append(col_colors[j])
+			uvs.append(Vector2(x, zc + cols[j]) / 6.0)
 	var w := cols.size()
 	for i in count:
 		for j in w - 1:
@@ -555,6 +738,7 @@ func _build_water() -> void:
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -563,7 +747,17 @@ func _build_water() -> void:
 	material.vertex_color_use_as_albedo = true
 	material.roughness = 0.08
 	material.metallic = 0.15
+	# 噪声法线贴图 + _process 中 UV 滚动 = 流动感
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.frequency = 0.6
+	var noise_tex := NoiseTexture2D.new()
+	noise_tex.noise = noise
+	material.normal_enabled = true
+	material.normal_texture = noise_tex
+	material.normal_scale = 0.3
 	mesh.surface_set_material(0, material)
+	_water_material = material
 	water.mesh = mesh
 	add_child(water)
 
@@ -572,15 +766,15 @@ func _build_water() -> void:
 ## 中心湿泥深色（透过水面可见河床），向外过渡到湿沙、干沙、草地
 func _build_riverbanks() -> void:
 	var hw := TrackShapes.RIVER_HALF_WIDTH
-	var cols := [-20.0, -12.0, -hw - 0.5, 0.0, hw + 0.5, 12.0, 20.0]
+	var cols := [-14.0, -10.0, -hw - 0.5, 0.0, hw + 0.5, 10.0, 14.0]
 	var col_colors := [
-		Color(0.42, 0.45, 0.27),  # 外缘：沙草过渡
-		Color(0.60, 0.52, 0.38),  # 干沙
-		Color(0.48, 0.41, 0.30),  # 湿沙
-		Color(0.34, 0.29, 0.21),  # 河底湿泥
-		Color(0.48, 0.41, 0.30),
-		Color(0.60, 0.52, 0.38),
-		Color(0.42, 0.45, 0.27),
+		Color(0.30, 0.36, 0.20),  # 外缘：沙草过渡
+		Color(0.42, 0.36, 0.25),  # 干沙
+		Color(0.33, 0.28, 0.20),  # 湿沙
+		Color(0.24, 0.21, 0.15),  # 河底湿泥
+		Color(0.33, 0.28, 0.20),
+		Color(0.42, 0.36, 0.25),
+		Color(0.30, 0.36, 0.20),
 	]
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
@@ -635,10 +829,10 @@ func _build_square_walls() -> void:
 
 	# 四面围墙（底边埋入地面 0.5 米以适应缓坡）
 	var walls := [
-		[Vector3(0, 0, -WILD_HALF_SIZE), Vector3(WILD_HALF_SIZE * 2, wall_height + 0.5, 0.4)],
-		[Vector3(0, 0, WILD_HALF_SIZE), Vector3(WILD_HALF_SIZE * 2, wall_height + 0.5, 0.4)],
-		[Vector3(-WILD_HALF_SIZE, 0, 0), Vector3(0.4, wall_height + 0.5, WILD_HALF_SIZE * 2)],
-		[Vector3(WILD_HALF_SIZE, 0, 0), Vector3(0.4, wall_height + 0.5, WILD_HALF_SIZE * 2)],
+		[Vector3(0, 0, -WILD_HALF_SIZE), Vector3(WILD_HALF_SIZE * 2, wall_height + 5.0, 0.4)],
+		[Vector3(0, 0, WILD_HALF_SIZE), Vector3(WILD_HALF_SIZE * 2, wall_height + 5.0, 0.4)],
+		[Vector3(-WILD_HALF_SIZE, 0, 0), Vector3(0.4, wall_height + 5.0, WILD_HALF_SIZE * 2)],
+		[Vector3(WILD_HALF_SIZE, 0, 0), Vector3(0.4, wall_height + 5.0, WILD_HALF_SIZE * 2)],
 	]
 	for wall in walls:
 		var center: Vector3 = wall[0]
@@ -735,7 +929,8 @@ func _try_place_tree(pos: Vector2, rng: RandomNumberGenerator, type_idx: int, he
 
 
 ## 实例化树种并按包围盒缩放到目标高度，树根对齐模型原点（y=0）
-## AI 树模型面数高（约 14 万三角形），限制可视距离控制渲染开销
+## AI 树模型面数高（约 14 万三角形），限制可视距离控制渲染开销；
+## 材质替换为带风摆的 ShaderMaterial（树冠高处摆幅大、根部不动）
 func _instantiate_fitted_tree(type_idx: int, height: float) -> Node3D:
 	var model: Node3D = TREE_MODELS[type_idx].instantiate()
 	var aabb := CarRecolor.compute_local_aabb(model)
@@ -747,7 +942,57 @@ func _instantiate_fitted_tree(type_idx: int, height: float) -> Node3D:
 		mi.visibility_range_end = 160.0
 		mi.visibility_range_end_margin = 24.0
 		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+		for surf in mi.mesh.get_surface_count():
+			var src := mi.get_active_material(surf) as StandardMaterial3D
+			if src != null:
+				mi.set_surface_override_material(surf,
+					_get_sway_material(type_idx, src, aabb.size.y))
 	return model
+
+
+const SWAY_SHADER := """
+shader_type spatial;
+render_mode cull_disabled;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap;
+uniform float height_ref = 1.0;
+uniform float sway = 0.02;
+uniform vec4 modulate : source_color = vec4(1.0);
+void vertex() {
+	float mask = smoothstep(0.3, 0.95, VERTEX.y / height_ref);
+	float phase = VERTEX.x * 1.7 + VERTEX.z * 1.3;
+	VERTEX.x += sin(TIME * 1.4 + phase) * sway * mask;
+	VERTEX.z += cos(TIME * 1.05 + phase * 1.7) * sway * 0.7 * mask;
+}
+void fragment() {
+	ALBEDO = texture(albedo_tex, UV).rgb * modulate.rgb;
+	NORMAL_MAP = texture(normal_tex, UV).rgb;
+	ROUGHNESS = 0.9;
+}
+"""
+static var _sway_shader: Shader = null
+static var _sway_mats := {} ## type_idx+texture 指针 -> ShaderMaterial（共享缓存）
+
+## 风摆材质：保留原贴图，仅在 vertex 阶段按高度加权摆动
+static func _get_sway_material(type_idx: int, src: StandardMaterial3D,
+		raw_height: float, sway := 0.02) -> ShaderMaterial:
+	var key := "%d_%x_%.3f" % [type_idx, src.albedo_texture.get_instance_id() if src.albedo_texture else 0, sway]
+	if _sway_mats.has(key):
+		return _sway_mats[key]
+	if _sway_shader == null:
+		_sway_shader = Shader.new()
+		_sway_shader.code = SWAY_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = _sway_shader
+	if src.albedo_texture != null:
+		mat.set_shader_parameter("albedo_tex", src.albedo_texture)
+	if src.normal_texture != null:
+		mat.set_shader_parameter("normal_tex", src.normal_texture)
+	mat.set_shader_parameter("modulate", src.albedo_color)
+	mat.set_shader_parameter("height_ref", maxf(raw_height, 0.01))
+	mat.set_shader_parameter("sway", sway)
+	_sway_mats[key] = mat
+	return mat
 
 
 ## 赛道外围装饰树（无碰撞，纯装饰）

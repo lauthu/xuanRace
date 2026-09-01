@@ -19,6 +19,10 @@ background_mode = 2
 sky = SubResource("sky")
 ambient_light_source = 3
 ambient_light_energy = 0.8
+fog_enabled = true
+fog_light_color = Color(0.75, 0.8, 0.88, 1)
+fog_density = 0.0016
+fog_sky_affect = 0.5
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")

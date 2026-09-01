@@ -30,6 +30,7 @@ func _ready() -> void:
 		_game_state = load("res://scripts/core/game_state.gd").new()
 
 	%Vignette.texture = UIStyle.make_vignette()
+	%PageBackground.texture = UIStyle.make_backdrop_glow()
 	%SpotLight.look_at(Vector3(0.0, 0.4, 0.0), Vector3.UP)
 
 	%PrevButton.pressed.connect(_on_prev_pressed)

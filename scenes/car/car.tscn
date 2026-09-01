@@ -6,6 +6,7 @@
 size = Vector3(2.47, 1.0, 4.5)
 
 [node name="Car" type="VehicleBody3D"]
+continuous_cd = 1
 mass = 600.0
 center_of_mass_mode = 1
 center_of_mass = Vector3(0, 0.17, 0)
@@ -24,7 +25,7 @@ use_as_steering = true
 wheel_radius = 0.51
 wheel_friction_slip = 6.0
 wheel_rest_length = 0.55
-suspension_travel = 0.2
+suspension_travel = 0.4
 suspension_stiffness = 40.0
 
 [node name="WheelFR" type="VehicleWheel3D" parent="."]
@@ -34,7 +35,7 @@ use_as_steering = true
 wheel_radius = 0.51
 wheel_friction_slip = 6.0
 wheel_rest_length = 0.55
-suspension_travel = 0.2
+suspension_travel = 0.4
 suspension_stiffness = 40.0
 
 [node name="WheelRL" type="VehicleWheel3D" parent="."]
@@ -44,7 +45,7 @@ use_as_steering = false
 wheel_radius = 0.51
 wheel_friction_slip = 6.0
 wheel_rest_length = 0.55
-suspension_travel = 0.2
+suspension_travel = 0.4
 suspension_stiffness = 40.0
 
 [node name="WheelRR" type="VehicleWheel3D" parent="."]
@@ -54,5 +55,5 @@ use_as_steering = false
 wheel_radius = 0.51
 wheel_friction_slip = 6.0
 wheel_rest_length = 0.55
-suspension_travel = 0.2
+suspension_travel = 0.4
 suspension_stiffness = 40.0

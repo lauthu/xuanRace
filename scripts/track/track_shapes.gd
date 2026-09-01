@@ -105,6 +105,10 @@ static func wild_height(x: float, z: float) -> float:
 	var h := 0.45 * sin(x * 0.08 + 0.5) * sin(z * 0.07 + 1.1) \
 		+ 0.2 * sin(x * 0.2) * sin(z * 0.18) \
 		+ 0.1 * sin(x * 0.45 + 2.0) * sin(z * 0.4 + 0.8)
+	# 大尺度丘陵：长波起伏 + 两座远离河道/出生点的山丘
+	h += 2.2 * sin(x * 0.008 + 2.0) * sin(z * 0.011 + 0.5)
+	h += 6.0 * exp(-((x + 180.0) ** 2 + (z + 180.0) ** 2) / (2.0 * 60.0 * 60.0))
+	h += 5.0 * exp(-((x - 190.0) ** 2 + (z - 160.0) ** 2) / (2.0 * 70.0 * 70.0))
 	var d := (z - river_center(x)) / 5.0
 	h -= RIVER_DEPTH * exp(-0.5 * d * d)
 	return h

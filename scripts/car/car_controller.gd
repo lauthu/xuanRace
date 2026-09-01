@@ -13,6 +13,9 @@ extends VehicleBody3D
 @export var upright_strength := 800.0 ## 扶正力矩（N·m），阻止翻滚并缓慢扶正侧翻车辆
 @export var yaw_damp_strength := 1200.0 ## 超速横摆阻尼（N·s·m），轮胎打滑后抑制旋转失控
 @export var rescue_delay := 1.5 ## 翻车多少秒后自动扶正
+@export var max_speed := 45.0 ## 极速（m/s，约 160 km/h），超过即断油
+@export var airborne_rescue_delay := 4.0 ## 持续离地多少秒后救援回地面（防止飞出地图卡死）
+@export var max_angular_speed := 6.0 ## 角速度上限（rad/s），防止翻滚累积
 @export var downforce_factor := 2.5 ## 下压力系数（N·s²/m²），速度越快越"吸地"，提升高速稳定性
 @export var water_drag := 150.0 ## 涉水阻力系数（N·s/m）
 @export var water_engine_factor := 0.6 ## 涉水时动力保留比例
@@ -30,6 +33,7 @@ signal car_rescued
 
 var _steer_target := 0.0
 var _inverted_time := 0.0
+var _airborne_time := 0.0 ## 持续离地时长（用于飞出地图救援）
 var _shape := TrackShapes.Shape.ELLIPSE
 var _wheels: Array[Dictionary] = [] ## {pivot, front, radius} 自动识别的车轮
 var _wheel_angle := 0.0 ## 车轮累计滚动角度
@@ -234,6 +238,21 @@ func _physics_process(delta: float) -> void:
 		brake = 0.0
 		engine_force = throttle * max_engine_force
 
+	# 地面接触与动力保护：
+	# 1) 四轮全离地时断油——空中轮胎空转会让落地瞬间失控蹿出
+	# 2) 超过极速断油——防止空中/下坡无滚动阻力时速度无限累积
+	var grounded := false
+	for w: VehicleWheel3D in [$WheelFL, $WheelFR, $WheelRL, $WheelRR]:
+		if w.is_in_contact():
+			grounded = true
+			break
+	if not grounded or linear_velocity.length() > max_speed:
+		engine_force = 0.0
+
+	# 角速度硬上限：翻滚不会无限加速（配合扶正力矩更容易恢复）
+	if angular_velocity.length() > max_angular_speed:
+		angular_velocity = angular_velocity.normalized() * max_angular_speed
+
 	# 横摆角速度限制：由目标过弯转速反推允许的前轮转角（δ = atan(ω·L/v)），
 	# 保证任何车速下满打方向，车身转速都不超过 max_yaw_rate
 	var speed := absf(forward_speed)
@@ -281,6 +300,27 @@ func _apply_stability_assists(delta: float) -> void:
 			_rescue_upright()
 	else:
 		_inverted_time = 0.0
+
+	# 飞行卡死检测：持续离地过久（冲出地图、长时间下坠）→ 救援回地面
+	var any_contact := false
+	for w: VehicleWheel3D in [$WheelFL, $WheelFR, $WheelRL, $WheelRR]:
+		if w.is_in_contact():
+			any_contact = true
+			break
+	if any_contact:
+		_airborne_time = 0.0
+	else:
+		_airborne_time += delta
+		if _airborne_time >= airborne_rescue_delay:
+			_rescue_to_ground()
+
+
+## 救援：把车辆扶正并放回当前位置的地形表面（清空速度）
+func _rescue_to_ground() -> void:
+	_rescue_upright()
+	var gy := TrackShapes.bump_height(_shape, global_position.x, global_position.z)
+	global_position.y = gy + 0.8
+	_airborne_time = 0.0
 
 
 ## 原地扶正车辆（保留朝向，清空速度）
