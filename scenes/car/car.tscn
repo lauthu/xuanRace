@@ -8,6 +8,8 @@ size = Vector3(2.47, 1.0, 4.5)
 [node name="Car" type="VehicleBody3D"]
 continuous_cd = 1
 mass = 600.0
+contact_monitor = true
+max_contacts_reported = 8
 center_of_mass_mode = 1
 center_of_mass = Vector3(0, 0.17, 0)
 script = ExtResource("1")

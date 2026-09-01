@@ -13,7 +13,10 @@ extends VehicleBody3D
 @export var upright_strength := 800.0 ## 扶正力矩（N·m），阻止翻滚并缓慢扶正侧翻车辆
 @export var yaw_damp_strength := 1200.0 ## 超速横摆阻尼（N·s·m），轮胎打滑后抑制旋转失控
 @export var rescue_delay := 1.5 ## 翻车多少秒后自动扶正
-@export var max_speed := 45.0 ## 极速（m/s，约 160 km/h），超过即断油
+@export var aero_drag_factor := 1.6 ## 空气阻力系数（F=μv²，把极速自然收敛到 ~155 km/h）
+@export var ground_snap_g := 2.0 ## 刚离地短暂窗口内的吸地力（g 的倍数），把飞跃压成贴地
+@export var tcs_slip_threshold := 1.25 ## 牵引力控制：轮速/车速超过该比值即削减动力
+@export var slope_power_threshold := 0.25 ## 陡坡动力衰减的起始坡度（tan）
 @export var airborne_rescue_delay := 4.0 ## 持续离地多少秒后救援回地面（防止飞出地图卡死）
 @export var max_angular_speed := 6.0 ## 角速度上限（rad/s），防止翻滚累积
 @export var downforce_factor := 2.5 ## 下压力系数（N·s²/m²），速度越快越"吸地"，提升高速稳定性
@@ -238,16 +241,38 @@ func _physics_process(delta: float) -> void:
 		brake = 0.0
 		engine_force = throttle * max_engine_force
 
-	# 地面接触与动力保护：
-	# 1) 四轮全离地时断油——空中轮胎空转会让落地瞬间失控蹿出
-	# 2) 超过极速断油——防止空中/下坡无滚动阻力时速度无限累积
+	# 地面接触检测：持续离地（>0.15s）才断油——忽略颠簸造成的瞬间离地；
+	# 长时间空转会让落地瞬间失控蹿出
 	var grounded := false
 	for w: VehicleWheel3D in [$WheelFL, $WheelFR, $WheelRL, $WheelRR]:
 		if w.is_in_contact():
 			grounded = true
 			break
-	if not grounded or linear_velocity.length() > max_speed:
+	if grounded:
+		_airborne_time = 0.0
+	if _airborne_time > 0.15:
 		engine_force = 0.0
+	elif absf(forward_speed) > 5.0:
+		# TCS 牵引力控制：中高速下驱动轮转速明显超过车速（打滑）时削减动力。
+		# 低速起步天然打滑属正常，不在此介入；get_rpm 单位是转/分钟
+		var rear_speed: float = (absf($WheelRL.get_rpm()) + absf($WheelRR.get_rpm())) \
+			* 0.5 * TAU * $WheelRL.wheel_radius / 60.0
+		var slip: float = rear_speed / absf(forward_speed)
+		if slip > tcs_slip_threshold and throttle > 0.0:
+			engine_force *= clampf(1.0 - (slip - tcs_slip_threshold) * 0.5, 0.4, 1.0)
+		# 陡坡动力衰减：车头前方坡度超过阈值时按坡度削减动力，陡坡冲不上去自然不飞
+		var ahead := global_position + transform.basis.z * 2.5
+		var slope := (TrackShapes.bump_height(_shape, ahead.x, ahead.z) \
+			- TrackShapes.bump_height(_shape, global_position.x, global_position.z)) / 2.5
+		if slope > slope_power_threshold:
+			engine_force *= clampf(1.0 - (slope - slope_power_threshold) * 2.0, 0.35, 1.0)
+
+	# 空气阻力（∝v²）：把极速自然收敛到平衡点，代替硬性断油
+	apply_central_force(-linear_velocity * aero_drag_factor * linear_velocity.length())
+
+	# 坡顶吸附：刚离地的短暂窗口内施加额外下压力，把飞跃压成贴地滑行
+	if not grounded and _airborne_time < 0.3:
+		apply_central_force(Vector3.DOWN * mass * 9.8 * ground_snap_g)
 
 	# 角速度硬上限：翻滚不会无限加速（配合扶正力矩更容易恢复）
 	if angular_velocity.length() > max_angular_speed:
@@ -281,10 +306,11 @@ func _physics_process(delta: float) -> void:
 func _apply_stability_assists(delta: float) -> void:
 	var up := transform.basis.y
 
-	# 扶正力矩：把车体"上"方向拉向世界上方。
-	# 侧倾时回正，完全翻车（up.y<0）时也持续施加，配合阻尼缓慢翻回
+	# 扶正力矩（非线性）：倾斜角越大回正力矩超线性增长，
+	# 小倾角即开始介入，翻滚在萌芽阶段就被掐掉；完全翻车时力矩最强
 	var correction := up.cross(Vector3.UP)
-	apply_torque(correction * upright_strength)
+	var tilt := up.angle_to(Vector3.UP)
+	apply_torque(correction * upright_strength * (1.0 + tilt * tilt * 4.0))
 
 	# 横摆阻尼：角速度超过目标转速上限时施加反向力矩。
 	# 转向角受限只能预防"输入过快"，轮胎打滑后的自旋需要阻尼兜底
@@ -337,6 +363,16 @@ func _rescue_upright() -> void:
 	angular_velocity = Vector3.ZERO
 	_inverted_time = 0.0
 	car_rescued.emit()
+
+
+## 撞击能量吸收：接触时削减法线方向 70% 的速度分量（切向保留），
+## 撞墙/撞树/撞石头时车"滑过去"而不是被弹回来
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	for i in state.get_contact_count():
+		var n := state.get_contact_local_normal(i)
+		var vn := linear_velocity.dot(n)
+		if vn < -2.0:
+			linear_velocity -= n * vn * 0.7
 
 
 func get_speed_kmh() -> float:
